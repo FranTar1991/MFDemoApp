@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.home.HomeFragment"
+        android:label="@string/home_title">
+        <action
+            android:id="@+id/action_homeFragment_to_keyManagementFragment"
+            app:destination="@id/keyManagementFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_saleFragment"
+            app:destination="@id/saleFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_resultFragment"
+            app:destination="@id/resultFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_logsFragment"
+            app:destination="@id/logsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/keyManagementFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.keys.KeyManagementFragment"
+        android:label="@string/key_management_title" />
+
+    <fragment
+        android:id="@+id/saleFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleFragment"
+        android:label="@string/sale_title" />
+
+    <fragment
+        android:id="@+id/resultFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.result.ResultFragment"
+        android:label="@string/result_title" />
+
+    <fragment
+        android:id="@+id/logsFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.logs.LogsFragment"
+        android:label="@string/logs_title" />
+</navigation>

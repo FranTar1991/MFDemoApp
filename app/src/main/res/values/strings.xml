@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">MFDemoApp</string>
+    <string name="home_title">YSDK Demo App</string>
+    <string name="home_subtitle">Payment demo shell</string>
+    <string name="key_management_title">Key Management</string>
+    <string name="sale_title">Sale</string>
+    <string name="result_title">Result</string>
+    <string name="logs_title">Logs</string>
+    <string name="go_to_keys">Key Management</string>
+    <string name="go_to_sale">Start Sale</string>
+    <string name="go_to_result">Result Placeholder</string>
+    <string name="go_to_logs">Transaction Logs</string>
+    <string name="placeholder_message">This screen is ready for the next implementation step.</string>
+</resources>
