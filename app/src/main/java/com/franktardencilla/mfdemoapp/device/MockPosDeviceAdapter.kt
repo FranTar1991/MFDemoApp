@@ -19,7 +19,7 @@ class MockPosDeviceAdapter(
     private val mockPed: MockPed,
     private val emvProcessor: EmvProcessor,
     private val hostClient: HostClient,
-    private val saleIsoRequestBuilder: SaleIsoRequestBuilder = SaleIsoRequestBuilder()
+    private val saleIsoRequestBuilder: SaleIsoRequestBuilder
 ) : PosDeviceAdapter {
     private var saleCanceled = false
 

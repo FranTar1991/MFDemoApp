@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -27,9 +28,25 @@ class ResultFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val resultSummaryText = view.findViewById<TextView>(R.id.resultSummaryText)
-        viewModel.resultSummary.observe(viewLifecycleOwner) { summary ->
-            resultSummaryText.text = summary
+        val transactionList = view.findViewById<LinearLayout>(R.id.transactionList)
+        val transactionDetailText = view.findViewById<TextView>(R.id.transactionDetailText)
+        viewModel.transactions.observe(viewLifecycleOwner) { transactions ->
+            transactionList.removeAllViews()
+            if (transactions.isEmpty()) {
+                transactionList.addView(buildEmptyListText())
+            } else {
+                transactions.forEach { transaction ->
+                    transactionList.addView(
+                        buildTransactionButton(
+                            text = viewModel.run { transaction.toListText() },
+                            transactionId = transaction.id
+                        )
+                    )
+                }
+            }
+        }
+        viewModel.detailSummary.observe(viewLifecycleOwner) { summary ->
+            transactionDetailText.text = summary
         }
         view.findViewById<Button>(R.id.refreshResultsButton).setOnClickListener {
             viewModel.refresh()
@@ -42,5 +59,36 @@ class ResultFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.refresh()
+    }
+
+    private fun buildTransactionButton(
+        text: String,
+        transactionId: String
+    ): Button {
+        return Button(requireContext()).apply {
+            this.text = text
+            isAllCaps = false
+            textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+            setOnClickListener {
+                viewModel.selectTransaction(transactionId)
+            }
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = resources.getDimensionPixelSize(R.dimen.result_item_spacing)
+            }
+        }
+    }
+
+    private fun buildEmptyListText(): TextView {
+        return TextView(requireContext()).apply {
+            text = getString(R.string.no_transactions)
+            gravity = android.view.Gravity.CENTER
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
     }
 }

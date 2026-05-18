@@ -44,5 +44,8 @@
     <string name="test_host_connection">Test Connection</string>
     <string name="refresh_results">Refresh Results</string>
     <string name="clear_results">Clear Results</string>
+    <string name="transaction_list_title">Transaction List</string>
+    <string name="transaction_detail_title">Transaction Detail</string>
+    <string name="no_transactions">No transactions stored.</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

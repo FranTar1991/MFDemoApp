@@ -52,7 +52,10 @@ class TransactionRepository(
             maskedPan?.value,
             responseCode,
             authCode,
-            message
+            message,
+            isoRequest?.toStoredSummary(),
+            isoResponse?.toStoredSummary(),
+            emvTagSummary.toStoredSummary()
         )
     }
 
@@ -71,8 +74,37 @@ class TransactionRepository(
             entryMode = entryMode?.let { value ->
                 runCatching { CardEntryMode.valueOf(value) }.getOrNull()
             },
-            maskedPan = maskedPan?.let(::MaskedPan)
+            maskedPan = maskedPan?.let(::MaskedPan),
+            responseCode = responseCode,
+            authCode = authCode,
+            message = message,
+            isoRequestSummary = isoRequestSummary,
+            isoResponseSummary = isoResponseSummary,
+            emvTagSummary = emvTagSummary
         )
+    }
+
+    private fun com.franktardencilla.mfdemoapp.domain.model.IsoMessageSummary.toStoredSummary(): String {
+        return listOf(
+            "MTI: $mti",
+            "STAN: ${stan ?: "none"}",
+            "RC: ${responseCode ?: "none"}",
+            "Auth: ${authCode ?: "none"}",
+            redactedMessage
+        ).joinToString(separator = "\n")
+    }
+
+    private fun com.franktardencilla.mfdemoapp.domain.model.EmvTagSummary.toStoredSummary(): String {
+        if (isEmpty()) {
+            return "No EMV tag summary available."
+        }
+        return buildString {
+            appendLine("AID: ${aid ?: "unavailable"}")
+            appendLine("PAN: ${maskedPan?.value ?: "unavailable"}")
+            tags.forEach { tag ->
+                appendLine("${tag.tag} ${tag.label}: ${tag.value}")
+            }
+        }.trim()
     }
 
     private companion object {

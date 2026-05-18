@@ -42,6 +42,15 @@ public class TransactionEntity {
     @Nullable
     public String message;
 
+    @Nullable
+    public String isoRequestSummary;
+
+    @Nullable
+    public String isoResponseSummary;
+
+    @Nullable
+    public String emvTagSummary;
+
     public TransactionEntity(
             @NonNull String id,
             long amountMinorUnits,
@@ -54,7 +63,10 @@ public class TransactionEntity {
             @Nullable String maskedPan,
             @Nullable String responseCode,
             @Nullable String authCode,
-            @Nullable String message
+            @Nullable String message,
+            @Nullable String isoRequestSummary,
+            @Nullable String isoResponseSummary,
+            @Nullable String emvTagSummary
     ) {
         this.id = id;
         this.amountMinorUnits = amountMinorUnits;
@@ -68,5 +80,8 @@ public class TransactionEntity {
         this.responseCode = responseCode;
         this.authCode = authCode;
         this.message = message;
+        this.isoRequestSummary = isoRequestSummary;
+        this.isoResponseSummary = isoResponseSummary;
+        this.emvTagSummary = emvTagSummary;
     }
 }

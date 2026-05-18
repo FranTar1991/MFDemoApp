@@ -22,6 +22,9 @@ import com.franktardencilla.mfdemoapp.repository.KeyRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 import java.math.BigDecimal
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 
 class SaleViewModel(
@@ -146,19 +149,22 @@ class SaleViewModel(
                     }
                     publishState(finalState, result.saleResult.message)
                     finishSale(
-                        "${finalState.displayName}\nAmount: ${request.amount.formatted()}\n${result.saleResult.message}"
+                        result.saleResult.toReceiptPreview()
                     )
                 }
                 is SaleDeviceResult.Failed -> {
                     publishState(SaleState.ERROR, result.message)
                     finishSale(
-                        "Not approved\nAmount: ${request.amount.formatted()}\n${result.message}${emvTagSummary?.toVoucherCardSummary().orEmpty()}"
+                        buildErrorReceiptPreview(
+                            amount = request.amount,
+                            message = result.message
+                        )
                     )
                 }
                 SaleDeviceResult.Canceled -> {
                     publishState(SaleState.CANCELED, "Sale canceled")
                     finishSale(
-                        "Canceled\nAmount: ${request.amount.formatted()}"
+                        buildCanceledReceiptPreview(request.amount)
                     )
                 }
             }
@@ -297,7 +303,94 @@ class SaleViewModel(
         return "Field 55 prepared | tags=${includedTags.joinToString()} | length=$byteLength bytes"
     }
 
+    private fun com.franktardencilla.mfdemoapp.domain.model.SaleResult.toReceiptPreview(): String {
+        val statusLine = when (status) {
+            TransactionStatus.APPROVED -> "APPROVED"
+            TransactionStatus.DECLINED -> "DECLINED"
+            TransactionStatus.CANCELED -> "CANCELED"
+            TransactionStatus.ERROR -> "ERROR"
+            TransactionStatus.PENDING -> "PENDING"
+        }
+        return listOf(
+            RECEIPT_SEPARATOR,
+            MERCHANT_NAME,
+            "TERMINAL: $TERMINAL_ID",
+            "MERCHANT: $MERCHANT_ID",
+            RECEIPT_SEPARATOR,
+            statusLine,
+            "TRANSACTION: SALE",
+            "DATE/TIME: ${receiptTimeFormatter.format(Date())}",
+            "AMOUNT: ${amount.formatted()}",
+            "",
+            "CARD: ${maskedPan?.value ?: "unavailable"}",
+            "ENTRY MODE: ${entryMode?.displayName ?: "unknown"}",
+            "STAN: ${stan ?: "none"}",
+            "AUTH CODE: ${authCode ?: "none"}",
+            "RESPONSE CODE: ${responseCode ?: "none"}",
+            "",
+            message,
+            RECEIPT_SEPARATOR,
+            "CUSTOMER COPY"
+        ).joinToString(separator = "\n")
+    }
+
+    private fun buildErrorReceiptPreview(
+        amount: MoneyAmount,
+        message: String
+    ): String {
+        return listOf(
+            RECEIPT_SEPARATOR,
+            MERCHANT_NAME,
+            "TERMINAL: $TERMINAL_ID",
+            "MERCHANT: $MERCHANT_ID",
+            RECEIPT_SEPARATOR,
+            "ERROR",
+            "TRANSACTION: SALE",
+            "DATE/TIME: ${receiptTimeFormatter.format(Date())}",
+            "AMOUNT: ${amount.formatted()}",
+            "",
+            "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}",
+            "ENTRY MODE: unknown",
+            "STAN: none",
+            "AUTH CODE: none",
+            "RESPONSE CODE: none",
+            "",
+            message,
+            RECEIPT_SEPARATOR,
+            "CUSTOMER COPY"
+        ).joinToString(separator = "\n")
+    }
+
+    private fun buildCanceledReceiptPreview(amount: MoneyAmount): String {
+        return listOf(
+            RECEIPT_SEPARATOR,
+            MERCHANT_NAME,
+            "TERMINAL: $TERMINAL_ID",
+            "MERCHANT: $MERCHANT_ID",
+            RECEIPT_SEPARATOR,
+            "CANCELED",
+            "TRANSACTION: SALE",
+            "DATE/TIME: ${receiptTimeFormatter.format(Date())}",
+            "AMOUNT: ${amount.formatted()}",
+            "",
+            "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}",
+            "ENTRY MODE: unknown",
+            "STAN: none",
+            "AUTH CODE: none",
+            "RESPONSE CODE: none",
+            "",
+            "Sale canceled before completion.",
+            RECEIPT_SEPARATOR,
+            "CUSTOMER COPY"
+        ).joinToString(separator = "\n")
+    }
+
     private companion object {
         val AMOUNT_PATTERN = Regex("^\\d+(\\.\\d{1,2})?$")
+        val receiptTimeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        const val MERCHANT_NAME = "MFDemo Merchant"
+        const val MERCHANT_ID = "MFDemoMerchant"
+        const val TERMINAL_ID = "DEMO920"
+        const val RECEIPT_SEPARATOR = "------------------------------"
     }
 }

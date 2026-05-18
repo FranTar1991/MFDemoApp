@@ -1,11 +1,9 @@
 package com.franktardencilla.mfdemoapp.domain.model
 
-import java.util.concurrent.atomic.AtomicInteger
-
 class SaleIsoRequestBuilder(
     private val terminalId: String = "DEMO920",
     private val merchantId: String = "MFDemoMerchant",
-    private val stanProvider: () -> String = { nextStan() }
+    private val stanProvider: () -> String
 ) {
     fun build(
         request: SaleRequest,
@@ -41,14 +39,5 @@ class SaleIsoRequestBuilder(
         const val FIELD_MERCHANT_ID = 42
         const val FIELD_CURRENCY_CODE = 49
         const val FIELD_55 = 55
-
-        val stanCounter = AtomicInteger(1)
-
-        fun nextStan(): String {
-            val nextValue = stanCounter.getAndUpdate { current ->
-                if (current >= 999999) 1 else current + 1
-            }
-            return nextValue.toString().padStart(6, '0')
-        }
     }
 }

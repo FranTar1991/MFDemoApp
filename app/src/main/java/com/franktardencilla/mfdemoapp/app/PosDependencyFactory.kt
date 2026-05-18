@@ -9,11 +9,14 @@ import com.franktardencilla.mfdemoapp.device.MockEmvProcessor
 import com.franktardencilla.mfdemoapp.device.MockPed
 import com.franktardencilla.mfdemoapp.device.MockPosDeviceAdapter
 import com.franktardencilla.mfdemoapp.device.SocketIso8583HostClient
+import com.franktardencilla.mfdemoapp.domain.model.SaleIsoRequestBuilder
 import com.franktardencilla.mfdemoapp.repository.HostConfigRepository
+import com.franktardencilla.mfdemoapp.repository.StanRepository
 
 class PosDependencyFactory(
     private val context: Context,
-    private val hostConfigRepository: HostConfigRepository
+    private val hostConfigRepository: HostConfigRepository,
+    private val stanRepository: StanRepository
 ) {
     fun create(runtimeMode: AppRuntimeMode): PosDependencies {
         return when (runtimeMode) {
@@ -36,12 +39,16 @@ class PosDependencyFactory(
         val mockPed = MockPed(mockPedKeyStore)
         val emvProcessor = MockEmvProcessor()
         val hostClient = SocketIso8583HostClient(hostConfigRepository)
+        val saleIsoRequestBuilder = SaleIsoRequestBuilder(
+            stanProvider = stanRepository::nextStan
+        )
         val deviceServiceManager = MockDeviceServiceManager()
         val posDeviceAdapter = MockPosDeviceAdapter(
             deviceServiceManager,
             mockPed,
             emvProcessor,
-            hostClient
+            hostClient,
+            saleIsoRequestBuilder
         )
 
         return PosDependencies(

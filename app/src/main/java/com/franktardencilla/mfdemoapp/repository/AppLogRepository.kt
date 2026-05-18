@@ -1,30 +1,52 @@
 package com.franktardencilla.mfdemoapp.repository
 
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.map
+import com.franktardencilla.mfdemoapp.data.applog.AppLogDao
+import com.franktardencilla.mfdemoapp.data.applog.AppLogEntity
 import com.franktardencilla.mfdemoapp.domain.model.AppLogCategory
 import com.franktardencilla.mfdemoapp.domain.model.AppLogEntry
+import java.util.concurrent.Executors
 
-class AppLogRepository {
-    private val entries = mutableListOf<AppLogEntry>()
-    private val _logs = MutableLiveData<List<AppLogEntry>>(emptyList())
-    val logs: LiveData<List<AppLogEntry>> = _logs
+class AppLogRepository(
+    private val appLogDao: AppLogDao
+) {
+    private val executor = Executors.newSingleThreadExecutor()
+    val logs: LiveData<List<AppLogEntry>> = appLogDao.getRecentLive(LOG_LIMIT).map { entries ->
+        entries.map { entry ->
+            entry.toDomain()
+        }
+    }
 
     fun add(
         category: AppLogCategory,
         message: String
     ) {
-        entries += AppLogEntry(
-            timestampMillis = System.currentTimeMillis(),
-            category = category,
-            message = redact(message)
-        )
-        _logs.postValue(entries.toList())
+        executor.execute {
+            appLogDao.insert(
+                AppLogEntity(
+                    System.currentTimeMillis(),
+                    category.name,
+                    redact(message)
+                )
+            )
+            appLogDao.pruneToLatest(LOG_LIMIT)
+        }
     }
 
     fun clear() {
-        entries.clear()
-        _logs.value = emptyList()
+        executor.execute {
+            appLogDao.deleteAll()
+        }
+    }
+
+    private fun AppLogEntity.toDomain(): AppLogEntry {
+        return AppLogEntry(
+            timestampMillis = timestampMillis,
+            category = runCatching { AppLogCategory.valueOf(category) }
+                .getOrDefault(AppLogCategory.SECURITY),
+            message = message
+        )
     }
 
     private fun redact(message: String): String {
@@ -34,6 +56,7 @@ class AppLogRepository {
     }
 
     private companion object {
+        const val LOG_LIMIT = 250
         val HEX_SECRET_PATTERN = Regex("\\b[0-9A-Fa-f]{16,}\\b")
         val PAN_PATTERN = Regex("\\b\\d{12,19}\\b")
     }

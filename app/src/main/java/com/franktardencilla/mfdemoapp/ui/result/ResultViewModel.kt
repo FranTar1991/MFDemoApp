@@ -14,10 +14,10 @@ import kotlinx.coroutines.launch
 class ResultViewModel(
     private val transactionRepository: TransactionRepository
 ) : ViewModel() {
-    private val _resultSummary = MutableLiveData(
-        "Loading transactions..."
-    )
-    val resultSummary: LiveData<String> = _resultSummary
+    private val _transactions = MutableLiveData<List<TransactionSummary>>(emptyList())
+    val transactions: LiveData<List<TransactionSummary>> = _transactions
+    private val _detailSummary = MutableLiveData("Select a transaction to view details.")
+    val detailSummary: LiveData<String> = _detailSummary
 
     init {
         refresh()
@@ -26,30 +26,56 @@ class ResultViewModel(
     fun refresh() {
         viewModelScope.launch {
             val transactions = transactionRepository.getRecentTransactions()
-            _resultSummary.value = if (transactions.isEmpty()) {
-                "Complete a sale to see the result here."
-            } else {
-                transactions.joinToString(separator = "\n\n") { transaction ->
-                    transaction.toDisplayText()
-                }
-            }
+            _transactions.value = transactions
+            _detailSummary.value = transactions.firstOrNull()?.toDetailText()
+                ?: "Complete a sale to see the result here."
         }
+    }
+
+    fun selectTransaction(transactionId: String) {
+        val transaction = _transactions.value.orEmpty().firstOrNull { transaction ->
+            transaction.id == transactionId
+        }
+        _detailSummary.value = transaction?.toDetailText()
+            ?: "Selected transaction was not found."
     }
 
     fun clearTransactions() {
         viewModelScope.launch {
             transactionRepository.clearTransactions()
-            _resultSummary.value = "Complete a sale to see the result here."
+            _transactions.value = emptyList()
+            _detailSummary.value = "Complete a sale to see the result here."
         }
     }
 
-    private fun TransactionSummary.toDisplayText(): String {
+    fun TransactionSummary.toListText(): String {
+        return listOf(
+            "${status.name} ${amount.formatted()}",
+            timeFormatter.format(Date(createdAtMillis)),
+            "STAN: ${stan ?: "none"} | ${entryMode?.displayName ?: "unknown"}",
+            "Card: ${maskedPan?.value ?: "unavailable"}"
+        ).joinToString(separator = "\n")
+    }
+
+    private fun TransactionSummary.toDetailText(): String {
         return listOf(
             "${status.name} ${amount.formatted()}",
             "Time: ${timeFormatter.format(Date(createdAtMillis))}",
             "STAN: ${stan ?: "none"}",
             "Entry: ${entryMode?.displayName ?: "unknown"}",
-            "Card: ${maskedPan?.value ?: "unavailable"}"
+            "Card: ${maskedPan?.value ?: "unavailable"}",
+            "Response: ${responseCode ?: "none"}",
+            "Auth: ${authCode ?: "none"}",
+            "Message: ${message ?: "none"}",
+            "",
+            "ISO8583 Request",
+            isoRequestSummary ?: "No ISO8583 request stored.",
+            "",
+            "ISO8583 Response",
+            isoResponseSummary ?: "No ISO8583 response stored.",
+            "",
+            "EMV Summary",
+            emvTagSummary ?: "No EMV tag summary stored."
         ).joinToString(separator = "\n")
     }
 
