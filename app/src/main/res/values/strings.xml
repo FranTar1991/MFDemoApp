@@ -4,6 +4,10 @@
     <string name="home_subtitle">Payment demo shell</string>
     <string name="key_management_title">Key Management</string>
     <string name="sale_title">Sale</string>
+    <string name="sale_amount_title">Enter Amount</string>
+    <string name="sale_card_title">Present Card</string>
+    <string name="sale_processing_title">Processing Sale</string>
+    <string name="sale_voucher_title">Sale Voucher</string>
     <string name="result_title">Result</string>
     <string name="logs_title">Logs</string>
     <string name="go_to_keys">Key Management</string>
@@ -21,5 +25,14 @@
     <string name="no_key_metadata">No key metadata available.</string>
     <string name="no_app_events">No app events recorded yet.</string>
     <string name="clear_logs">Clear Logs</string>
+    <string name="start_mock_sale">Start Mock Sale</string>
+    <string name="cancel_sale">Cancel Sale</string>
+    <string name="refresh_sale_readiness">Refresh Sale Readiness</string>
+    <string name="sale_amount_hint">Amount</string>
+    <string name="continue_to_card">Continue</string>
+    <string name="present_card_message">Present, insert, or tap card.</string>
+    <string name="present_card">Present Card</string>
+    <string name="finish_sale">Finish Sale</string>
+    <string name="amount_not_set">Amount: not set</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

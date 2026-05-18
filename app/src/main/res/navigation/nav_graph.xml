@@ -13,7 +13,7 @@
             app:destination="@id/keyManagementFragment" />
         <action
             android:id="@+id/action_homeFragment_to_saleFragment"
-            app:destination="@id/saleFragment" />
+            app:destination="@id/saleAmountFragment" />
         <action
             android:id="@+id/action_homeFragment_to_resultFragment"
             app:destination="@id/resultFragment" />
@@ -28,9 +28,45 @@
         android:label="@string/key_management_title" />
 
     <fragment
-        android:id="@+id/saleFragment"
-        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleFragment"
-        android:label="@string/sale_title" />
+        android:id="@+id/saleAmountFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleAmountFragment"
+        android:label="@string/sale_amount_title">
+        <action
+            android:id="@+id/action_saleAmountFragment_to_saleCardFragment"
+            app:destination="@id/saleCardFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/saleCardFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleCardFragment"
+        android:label="@string/sale_card_title">
+        <action
+            android:id="@+id/action_saleCardFragment_to_saleProcessingFragment"
+            app:destination="@id/saleProcessingFragment" />
+        <action
+            android:id="@+id/action_saleCardFragment_to_saleVoucherFragment"
+            app:destination="@id/saleVoucherFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/saleProcessingFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleProcessingFragment"
+        android:label="@string/sale_processing_title">
+        <action
+            android:id="@+id/action_saleProcessingFragment_to_saleVoucherFragment"
+            app:destination="@id/saleVoucherFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/saleVoucherFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.sale.SaleVoucherFragment"
+        android:label="@string/sale_voucher_title">
+        <action
+            android:id="@+id/action_saleVoucherFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/resultFragment"

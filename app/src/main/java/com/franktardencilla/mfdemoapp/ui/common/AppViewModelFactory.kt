@@ -30,7 +30,9 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(SaleViewModel::class.java) -> {
                 SaleViewModel(
                     appContainer.deviceRepository,
-                    appContainer.keyRepository
+                    appContainer.keyRepository,
+                    appContainer.saleRepository,
+                    appContainer.appLogRepository
                 )
             }
             modelClass.isAssignableFrom(ResultViewModel::class.java) -> {
