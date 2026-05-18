@@ -1,23 +1,25 @@
 package com.franktardencilla.mfdemoapp.device
 
 import com.franktardencilla.mfdemoapp.domain.model.DeviceConnectionStatus
-import com.franktardencilla.mfdemoapp.domain.model.KeyReadinessStatus
-import com.franktardencilla.mfdemoapp.domain.model.KeySlotMetadata
-import com.franktardencilla.mfdemoapp.domain.model.KeyStatus
-import com.franktardencilla.mfdemoapp.domain.model.KeyType
-import com.franktardencilla.mfdemoapp.domain.model.CardEntryMode
-import com.franktardencilla.mfdemoapp.domain.model.EmvTagSummary
+import com.franktardencilla.mfdemoapp.domain.model.Field55Builder
 import com.franktardencilla.mfdemoapp.domain.model.SaleRequest
 import com.franktardencilla.mfdemoapp.domain.model.SaleResult
 import com.franktardencilla.mfdemoapp.domain.model.SaleState
-import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
+import com.franktardencilla.mfdemoapp.domain.model.KeyReadinessStatus
+import com.franktardencilla.mfdemoapp.domain.model.KeySlotMetadata
+import com.franktardencilla.mfdemoapp.domain.model.KeyStatus
+import com.franktardencilla.mfdemoapp.domain.model.SaleIsoRequestBuilder
 import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyInjectionRequest
 import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyReadinessValidator
+import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
 import kotlinx.coroutines.delay
 
 class MockPosDeviceAdapter(
     private val deviceServiceManager: DeviceServiceManager,
-    private val mockPed: MockPed
+    private val mockPed: MockPed,
+    private val emvProcessor: EmvProcessor,
+    private val hostClient: HostClient,
+    private val saleIsoRequestBuilder: SaleIsoRequestBuilder = SaleIsoRequestBuilder()
 ) : PosDeviceAdapter {
     private var saleCanceled = false
 
@@ -109,14 +111,65 @@ class MockPosDeviceAdapter(
         emitSaleStep(SaleState.READING_EMV, "Reading mock EMV application", events)?.let {
             return it
         }
+        val emvTagSummary = emvProcessor.readEmvData(request)
         emitSaleStep(SaleState.EMV_DATA_READY, "Mock EMV data ready", events)?.let {
             return it
         }
+        events.onEvent(SaleEvent.EmvDataReady(emvTagSummary))
         emitSaleStep(SaleState.WAITING_FOR_HOST, "Waiting for host simulator", events)?.let {
             return it
         }
 
-        return SaleDeviceResult.Failed("Host simulator is not implemented yet.")
+        return runCatching {
+            val entryMode = request.preferredEntryModes.first()
+            val field55Data = Field55Builder.build(emvTagSummary)
+            val isoRequest = saleIsoRequestBuilder.build(
+                request = request,
+                entryMode = entryMode,
+                field55Data = field55Data
+            )
+            val hostResponse = hostClient.authorizeSale(isoRequest)
+            events.onEvent(SaleEvent.IsoRequestReady(hostResponse.requestSummary))
+            events.onEvent(SaleEvent.IsoResponseReady(hostResponse.responseSummary))
+
+            if (hostResponse.isApproved) {
+                SaleDeviceResult.Completed(
+                    SaleResult(
+                        status = TransactionStatus.APPROVED,
+                        amount = request.amount,
+                        stan = hostResponse.responseSummary.stan,
+                        entryMode = entryMode,
+                        maskedPan = emvTagSummary.maskedPan,
+                        responseCode = hostResponse.responseSummary.responseCode,
+                        authCode = hostResponse.responseSummary.authCode,
+                        emvTagSummary = emvTagSummary,
+                        isoRequest = hostResponse.requestSummary,
+                        isoResponse = hostResponse.responseSummary,
+                        message = "Host approved sale. Auth: ${hostResponse.responseSummary.authCode ?: "none"}"
+                    )
+                )
+            } else {
+                SaleDeviceResult.Completed(
+                    SaleResult(
+                        status = TransactionStatus.DECLINED,
+                        amount = request.amount,
+                        stan = hostResponse.responseSummary.stan,
+                        entryMode = entryMode,
+                        maskedPan = emvTagSummary.maskedPan,
+                        responseCode = hostResponse.responseSummary.responseCode,
+                        authCode = hostResponse.responseSummary.authCode,
+                        emvTagSummary = emvTagSummary,
+                        isoRequest = hostResponse.requestSummary,
+                        isoResponse = hostResponse.responseSummary,
+                        message = "Host declined sale. Response code: ${hostResponse.responseSummary.responseCode ?: "unknown"}"
+                    )
+                )
+            }
+        }.getOrElse { error ->
+            SaleDeviceResult.Failed(
+                "Could not reach host simulator. Start it on port 8001 and try again. ${error.message.orEmpty()}"
+            )
+        }
     }
 
     override suspend fun cancelCurrentOperation() {

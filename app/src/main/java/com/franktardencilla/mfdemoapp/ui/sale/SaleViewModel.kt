@@ -7,15 +7,20 @@ import androidx.lifecycle.viewModelScope
 import com.franktardencilla.mfdemoapp.device.SaleDeviceResult
 import com.franktardencilla.mfdemoapp.device.SaleEvent
 import com.franktardencilla.mfdemoapp.domain.model.AppLogCategory
+import com.franktardencilla.mfdemoapp.domain.model.EmvTagSummary
+import com.franktardencilla.mfdemoapp.domain.model.Field55Builder
+import com.franktardencilla.mfdemoapp.domain.model.Field55Data
 import com.franktardencilla.mfdemoapp.domain.model.MoneyAmount
 import com.franktardencilla.mfdemoapp.domain.model.SaleRequest
 import com.franktardencilla.mfdemoapp.domain.model.SaleState
 import com.franktardencilla.mfdemoapp.domain.model.SaleStateMachine
 import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyReadinessValidator
+import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
 import com.franktardencilla.mfdemoapp.repository.AppLogRepository
 import com.franktardencilla.mfdemoapp.repository.DeviceRepository
 import com.franktardencilla.mfdemoapp.repository.KeyRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
+import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 import java.math.BigDecimal
 import kotlinx.coroutines.launch
 
@@ -23,6 +28,7 @@ class SaleViewModel(
     private val deviceRepository: DeviceRepository,
     private val keyRepository: KeyRepository,
     private val saleRepository: SaleRepository,
+    private val transactionRepository: TransactionRepository,
     private val appLogRepository: AppLogRepository
 ) : ViewModel() {
     private val _screenStatus = MutableLiveData("Checking sale readiness...")
@@ -37,6 +43,8 @@ class SaleViewModel(
     val saleReady: LiveData<Boolean> = _saleReady
     private val saleStateMachine = SaleStateMachine()
     private var saleAmount: MoneyAmount? = null
+    private var emvTagSummary: EmvTagSummary? = null
+    private var field55Data: Field55Data? = null
 
     init {
         refresh()
@@ -93,21 +101,58 @@ class SaleViewModel(
                         _screenStatus.postValue(event.message)
                         appLogRepository.add(AppLogCategory.SALE, event.message)
                     }
+                    is SaleEvent.EmvDataReady -> {
+                        emvTagSummary = event.summary
+                        field55Data = Field55Builder.build(event.summary)
+                        _voucherSummary.postValue(
+                            "Sale in progress\nAmount: ${request.amount.formatted()}\n${event.summary.toVoucherCardSummary()}"
+                        )
+                        appLogRepository.add(
+                            AppLogCategory.EMV,
+                            event.summary.toLogText()
+                        )
+                        appLogRepository.add(
+                            AppLogCategory.ISO8583,
+                            field55Data!!.toLogText()
+                        )
+                    }
+                    is SaleEvent.IsoRequestReady -> {
+                        appLogRepository.add(
+                            AppLogCategory.ISO8583,
+                            "Authorization request | MTI=${event.summary.mti} | STAN=${event.summary.stan} | ${event.summary.redactedMessage}"
+                        )
+                    }
+                    is SaleEvent.IsoResponseReady -> {
+                        appLogRepository.add(
+                            AppLogCategory.ISO8583,
+                            "Authorization response | MTI=${event.summary.mti} | RC=${event.summary.responseCode ?: "unknown"} | AUTH=${event.summary.authCode ?: "none"} | ${event.summary.redactedMessage}"
+                        )
+                    }
                     is SaleEvent.Error -> publishState(SaleState.ERROR, event.message)
                 }
             }
 
             when (result) {
                 is SaleDeviceResult.Completed -> {
-                    publishState(SaleState.APPROVED, result.saleResult.message)
+                    val savedTransaction = transactionRepository.saveSaleResult(result.saleResult)
+                    appLogRepository.add(
+                        AppLogCategory.SALE,
+                        "Transaction saved | id=${savedTransaction.id} | status=${savedTransaction.status} | stan=${savedTransaction.stan ?: "none"}"
+                    )
+                    val finalState = if (result.saleResult.status == TransactionStatus.APPROVED) {
+                        SaleState.APPROVED
+                    } else {
+                        SaleState.DECLINED
+                    }
+                    publishState(finalState, result.saleResult.message)
                     finishSale(
-                        "Approved\nAmount: ${request.amount.formatted()}\n${result.saleResult.message}"
+                        "${finalState.displayName}\nAmount: ${request.amount.formatted()}\n${result.saleResult.message}"
                     )
                 }
                 is SaleDeviceResult.Failed -> {
                     publishState(SaleState.ERROR, result.message)
                     finishSale(
-                        "Not approved\nAmount: ${request.amount.formatted()}\n${result.message}"
+                        "Not approved\nAmount: ${request.amount.formatted()}\n${result.message}${emvTagSummary?.toVoucherCardSummary().orEmpty()}"
                     )
                 }
                 SaleDeviceResult.Canceled -> {
@@ -148,6 +193,8 @@ class SaleViewModel(
     fun resetSale() {
         saleStateMachine.reset()
         saleAmount = null
+        emvTagSummary = null
+        field55Data = null
         _saleComplete.value = false
         _amountSummary.value = "Amount: not set"
         _screenStatus.value = "Ready for new sale"
@@ -229,6 +276,25 @@ class SaleViewModel(
     private sealed interface AmountParseResult {
         data class Valid(val amount: MoneyAmount) : AmountParseResult
         data class Invalid(val message: String) : AmountParseResult
+    }
+
+    private fun EmvTagSummary.toVoucherCardSummary(): String {
+        return listOf(
+            "",
+            "Card: ${maskedPan?.value ?: "unavailable"}",
+            "AID: ${aid ?: "unavailable"}"
+        ).joinToString(separator = "\n")
+    }
+
+    private fun EmvTagSummary.toLogText(): String {
+        val tagLines = tags.joinToString(separator = "; ") { tag ->
+            "${tag.tag} ${tag.label}=${tag.value}"
+        }
+        return "Mock EMV data ready | AID=${aid ?: "unknown"} | PAN=${maskedPan?.value ?: "unavailable"} | $tagLines"
+    }
+
+    private fun Field55Data.toLogText(): String {
+        return "Field 55 prepared | tags=${includedTags.joinToString()} | length=$byteLength bytes"
     }
 
     private companion object {

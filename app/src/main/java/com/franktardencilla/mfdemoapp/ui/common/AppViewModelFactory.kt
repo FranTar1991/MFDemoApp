@@ -3,6 +3,7 @@ package com.franktardencilla.mfdemoapp.ui.common
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.franktardencilla.mfdemoapp.app.AppContainer
+import com.franktardencilla.mfdemoapp.ui.host.HostSettingsViewModel
 import com.franktardencilla.mfdemoapp.ui.home.HomeViewModel
 import com.franktardencilla.mfdemoapp.ui.keys.KeyManagementViewModel
 import com.franktardencilla.mfdemoapp.ui.logs.LogsViewModel
@@ -32,14 +33,21 @@ class AppViewModelFactory(
                     appContainer.deviceRepository,
                     appContainer.keyRepository,
                     appContainer.saleRepository,
+                    appContainer.transactionRepository,
                     appContainer.appLogRepository
                 )
             }
             modelClass.isAssignableFrom(ResultViewModel::class.java) -> {
-                ResultViewModel()
+                ResultViewModel(appContainer.transactionRepository)
             }
             modelClass.isAssignableFrom(LogsViewModel::class.java) -> {
                 LogsViewModel(appContainer.appLogRepository)
+            }
+            modelClass.isAssignableFrom(HostSettingsViewModel::class.java) -> {
+                HostSettingsViewModel(
+                    appContainer.hostConfigRepository,
+                    appContainer.appLogRepository
+                )
             }
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T

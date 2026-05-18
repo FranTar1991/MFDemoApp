@@ -10,10 +10,12 @@
     <string name="sale_voucher_title">Sale Voucher</string>
     <string name="result_title">Result</string>
     <string name="logs_title">Logs</string>
+    <string name="host_settings_title">Host Settings</string>
     <string name="go_to_keys">Key Management</string>
     <string name="go_to_sale">Start Sale</string>
     <string name="go_to_result">Result Placeholder</string>
     <string name="go_to_logs">Transaction Logs</string>
+    <string name="go_to_host_settings">Host Settings</string>
     <string name="connect_device_service">Connect Device Service</string>
     <string name="disconnect_device_service">Disconnect Device Service</string>
     <string name="refresh_status">Refresh Status</string>
@@ -34,5 +36,13 @@
     <string name="present_card">Present Card</string>
     <string name="finish_sale">Finish Sale</string>
     <string name="amount_not_set">Amount: not set</string>
+    <string name="primary_host_hint">Primary host</string>
+    <string name="fallback_host_hint">Fallback host</string>
+    <string name="host_port_hint">Port</string>
+    <string name="host_timeout_hint">Timeout milliseconds</string>
+    <string name="save_host_settings">Save Host Settings</string>
+    <string name="test_host_connection">Test Connection</string>
+    <string name="refresh_results">Refresh Results</string>
+    <string name="clear_results">Clear Results</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

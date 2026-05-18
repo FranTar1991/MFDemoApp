@@ -20,6 +20,9 @@
         <action
             android:id="@+id/action_homeFragment_to_logsFragment"
             app:destination="@id/logsFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_hostSettingsFragment"
+            app:destination="@id/hostSettingsFragment" />
     </fragment>
 
     <fragment
@@ -77,4 +80,9 @@
         android:id="@+id/logsFragment"
         android:name="com.franktardencilla.mfdemoapp.ui.logs.LogsFragment"
         android:label="@string/logs_title" />
+
+    <fragment
+        android:id="@+id/hostSettingsFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.host.HostSettingsFragment"
+        android:label="@string/host_settings_title" />
 </navigation>

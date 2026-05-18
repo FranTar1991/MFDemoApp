@@ -63,6 +63,9 @@ class HomeFragment : Fragment() {
         view.findViewById<Button>(R.id.logsButton).setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_logsFragment)
         }
+        view.findViewById<Button>(R.id.hostSettingsButton).setOnClickListener {
+            findNavController().navigate(R.id.action_homeFragment_to_hostSettingsFragment)
+        }
     }
 
     override fun onResume() {
