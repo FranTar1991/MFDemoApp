@@ -30,16 +30,12 @@ class KeyManagementFragment : Fragment() {
 
         val keyStatusText = view.findViewById<TextView>(R.id.keyStatusText)
         val keyDetailsText = view.findViewById<TextView>(R.id.keyDetailsText)
-        val injectionLogText = view.findViewById<TextView>(R.id.injectionLogText)
 
         viewModel.keyStatus.observe(viewLifecycleOwner) { status ->
             keyStatusText.text = status
         }
         viewModel.keyDetails.observe(viewLifecycleOwner) { details ->
             keyDetailsText.text = details
-        }
-        viewModel.injectionLog.observe(viewLifecycleOwner) { log ->
-            injectionLogText.text = log
         }
 
         view.findViewById<Button>(R.id.injectTrackAKeysButton).setOnClickListener {

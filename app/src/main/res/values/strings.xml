@@ -19,7 +19,7 @@
     <string name="clear_keys_warning_message">This removes the loaded key state from the device mock. On real hardware this operation can remove payment keys from secure storage.</string>
     <string name="refresh_key_status">Refresh Key Status</string>
     <string name="no_key_metadata">No key metadata available.</string>
-    <string name="injection_log_title">Injection Log</string>
-    <string name="no_injection_steps">No injection steps recorded.</string>
+    <string name="no_app_events">No app events recorded yet.</string>
+    <string name="clear_logs">Clear Logs</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

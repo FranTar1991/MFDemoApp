@@ -22,7 +22,10 @@ class AppViewModelFactory(
                 )
             }
             modelClass.isAssignableFrom(KeyManagementViewModel::class.java) -> {
-                KeyManagementViewModel(appContainer.keyRepository)
+                KeyManagementViewModel(
+                    appContainer.keyRepository,
+                    appContainer.appLogRepository
+                )
             }
             modelClass.isAssignableFrom(SaleViewModel::class.java) -> {
                 SaleViewModel(
@@ -34,7 +37,7 @@ class AppViewModelFactory(
                 ResultViewModel()
             }
             modelClass.isAssignableFrom(LogsViewModel::class.java) -> {
-                LogsViewModel(appContainer.transactionRepository)
+                LogsViewModel(appContainer.appLogRepository)
             }
             else -> error("Unknown ViewModel class: ${modelClass.name}")
         } as T
