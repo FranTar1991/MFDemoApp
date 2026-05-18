@@ -13,5 +13,13 @@
     <string name="connect_device_service">Connect Device Service</string>
     <string name="disconnect_device_service">Disconnect Device Service</string>
     <string name="refresh_status">Refresh Status</string>
+    <string name="inject_track_a_demo_keys">Inject Track A Demo Keys</string>
+    <string name="clear_keys">Clear Keys</string>
+    <string name="clear_keys_warning_title">Clear keys?</string>
+    <string name="clear_keys_warning_message">This removes the loaded key state from the device mock. On real hardware this operation can remove payment keys from secure storage.</string>
+    <string name="refresh_key_status">Refresh Key Status</string>
+    <string name="no_key_metadata">No key metadata available.</string>
+    <string name="injection_log_title">Injection Log</string>
+    <string name="no_injection_steps">No injection steps recorded.</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

@@ -64,4 +64,9 @@ class HomeFragment : Fragment() {
             findNavController().navigate(R.id.action_homeFragment_to_logsFragment)
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refresh()
+    }
 }

@@ -1,16 +1,18 @@
 package com.franktardencilla.mfdemoapp.app
 
-import com.franktardencilla.mfdemoapp.device.MockDeviceServiceManager
-import com.franktardencilla.mfdemoapp.device.MockPosDeviceAdapter
+import android.content.Context
 import com.franktardencilla.mfdemoapp.repository.DeviceRepository
 import com.franktardencilla.mfdemoapp.repository.KeyRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 
-class AppContainer {
-    private val deviceServiceManager = MockDeviceServiceManager()
-    private val posDeviceAdapter = MockPosDeviceAdapter(deviceServiceManager)
+class AppContainer(
+    context: Context,
+    runtimeMode: AppRuntimeMode = AppRuntimeMode.MOCK
+) {
+    private val posDependencies = PosDependencyFactory(context)
+        .create(runtimeMode)
 
-    val deviceRepository = DeviceRepository(deviceServiceManager)
-    val keyRepository = KeyRepository(posDeviceAdapter)
+    val deviceRepository = DeviceRepository(posDependencies.deviceServiceManager)
+    val keyRepository = KeyRepository(posDependencies.posDeviceAdapter)
     val transactionRepository = TransactionRepository()
 }

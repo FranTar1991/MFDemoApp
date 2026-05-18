@@ -8,6 +8,9 @@ class DemoApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        appContainer = AppContainer()
+        appContainer = AppContainer(
+            context = this,
+            runtimeMode = AppRuntimeMode.MOCK
+        )
     }
 }
