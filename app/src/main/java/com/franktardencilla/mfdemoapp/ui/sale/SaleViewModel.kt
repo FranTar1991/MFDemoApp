@@ -11,7 +11,7 @@ class SaleViewModel(
     keyRepository: KeyRepository
 ) : ViewModel() {
     private val _screenStatus = MutableLiveData(
-        "${deviceRepository.getServiceStatus()}\n${keyRepository.getKeyReadinessStatus()}"
+        "${deviceRepository.getConnectionStatus().message}\n${keyRepository.getKeyStatus().message}"
     )
     val screenStatus: LiveData<String> = _screenStatus
 }

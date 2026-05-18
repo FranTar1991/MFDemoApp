@@ -8,6 +8,6 @@ import com.franktardencilla.mfdemoapp.repository.KeyRepository
 class KeyManagementViewModel(
     keyRepository: KeyRepository
 ) : ViewModel() {
-    private val _keyStatus = MutableLiveData(keyRepository.getKeyReadinessStatus())
+    private val _keyStatus = MutableLiveData(keyRepository.getKeyStatus().message)
     val keyStatus: LiveData<String> = _keyStatus
 }

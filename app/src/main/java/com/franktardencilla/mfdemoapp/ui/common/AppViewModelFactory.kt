@@ -31,7 +31,7 @@ class AppViewModelFactory(
                 )
             }
             modelClass.isAssignableFrom(ResultViewModel::class.java) -> {
-                ResultViewModel(appContainer.transactionRepository)
+                ResultViewModel()
             }
             modelClass.isAssignableFrom(LogsViewModel::class.java) -> {
                 LogsViewModel(appContainer.transactionRepository)

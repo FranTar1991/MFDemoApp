@@ -8,6 +8,12 @@ import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 class LogsViewModel(
     transactionRepository: TransactionRepository
 ) : ViewModel() {
-    private val _transactionSummary = MutableLiveData(transactionRepository.getTransactionSummary())
+    private val _transactionSummary = MutableLiveData(
+        if (transactionRepository.getRecentTransactions().isEmpty()) {
+            "Transactions: none yet"
+        } else {
+            "Transactions: ${transactionRepository.getRecentTransactions().size}"
+        }
+    )
     val transactionSummary: LiveData<String> = _transactionSummary
 }

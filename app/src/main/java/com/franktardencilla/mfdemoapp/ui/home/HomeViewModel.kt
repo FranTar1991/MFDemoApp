@@ -10,9 +10,9 @@ class HomeViewModel(
     deviceRepository: DeviceRepository,
     keyRepository: KeyRepository
 ) : ViewModel() {
-    private val _serviceStatus = MutableLiveData(deviceRepository.getServiceStatus())
+    private val _serviceStatus = MutableLiveData(deviceRepository.getConnectionStatus().message)
     val serviceStatus: LiveData<String> = _serviceStatus
 
-    private val _keyStatus = MutableLiveData(keyRepository.getKeyReadinessStatus())
+    private val _keyStatus = MutableLiveData(keyRepository.getKeyStatus().message)
     val keyStatus: LiveData<String> = _keyStatus
 }

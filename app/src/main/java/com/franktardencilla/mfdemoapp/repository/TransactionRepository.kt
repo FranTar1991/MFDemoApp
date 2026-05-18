@@ -1,7 +1,9 @@
 package com.franktardencilla.mfdemoapp.repository
 
+import com.franktardencilla.mfdemoapp.domain.model.TransactionSummary
+
 class TransactionRepository {
-    fun getTransactionSummary(): String {
-        return "Transactions: none yet"
+    fun getRecentTransactions(): List<TransactionSummary> {
+        return emptyList()
     }
 }
