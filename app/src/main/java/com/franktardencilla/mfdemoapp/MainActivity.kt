@@ -14,11 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.franktardencilla.mfdemoapp.app.DemoApplication
-import com.franktardencilla.mfdemoapp.device.TrackAKeyInjectionEvent
-import com.franktardencilla.mfdemoapp.domain.model.AppLogCategory
-import com.franktardencilla.mfdemoapp.domain.model.DeviceModuleAvailability
-import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyInjectionRequest
-import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyReadinessValidator
+import com.franktardencilla.mfdemoapp.domain.terminal.TerminalSessionResult
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -82,7 +78,7 @@ class MainActivity : FragmentActivity() {
                             true
                         }
                         getString(R.string.device_disconnect) -> {
-                            disconnectDevice()
+                            confirmDisconnectAndErase()
                             true
                         }
                         else -> false
@@ -116,87 +112,21 @@ class MainActivity : FragmentActivity() {
             dialog.show()
             connectionButton.isEnabled = false
 
-            titleText.text = "Connecting"
-            messageText.text = "Opening device service session..."
-            val connectionStatus = appContainer.deviceRepository.connect()
-            if (!connectionStatus.isConnected) {
-                messageText.text = connectionStatus.message
-                delay(DIALOG_RESULT_DELAY_MILLIS)
-                dialog.dismiss()
-                connectionButton.isEnabled = true
-                refreshConnectionButton()
-                notifyDeviceConnectionChanged()
-                return@launch
-            }
-
-            val session = appContainer.deviceRepository.getSession()
-            if (session == null) {
-                messageText.text = "Device session unavailable. Try reconnecting."
-                appContainer.deviceRepository.disconnect()
-                delay(DIALOG_RESULT_DELAY_MILLIS)
-                dialog.dismiss()
-                connectionButton.isEnabled = true
-                refreshConnectionButton()
-                notifyDeviceConnectionChanged()
-                return@launch
-            }
-
-            val checks = session.modules.toConnectionChecks()
-            val statusLines = mutableListOf<String>()
-            checks.forEach { check ->
-                titleText.text = "Checking ${check.name}"
-                delay(MODULE_CHECK_DELAY_MILLIS)
-                statusLines += "${check.name}: ${if (check.available) "available" else "unavailable"}"
-                messageText.text = statusLines.joinToString(separator = "\n")
-            }
-
-            val requiredFailure = checks.firstOrNull { check ->
-                check.required && !check.available
-            }
-            if (requiredFailure == null) {
-                titleText.text = "Injecting keys"
-                messageText.text = statusLines.joinToString(separator = "\n") +
-                    "\nPreparing Track A keys..."
-                appContainer.appLogRepository.add(
-                    AppLogCategory.KEYS,
-                    "Starting Track A key injection during device connection"
-                )
-                val keyStatus = appContainer.keyRepository.injectTrackAKeys(
-                    request = TrackAKeyInjectionRequest.demo()
-                ) { event ->
-                    when (event) {
-                        is TrackAKeyInjectionEvent.Progress -> {
-                            appContainer.appLogRepository.add(AppLogCategory.KEYS, event.message)
-                            runOnUiThread {
-                                messageText.text = statusLines.joinToString(separator = "\n") +
-                                    "\n${event.message}"
-                            }
-                        }
-                    }
+            val result = appContainer.terminalSessionUseCase.connectAndPrepare { progress ->
+                runOnUiThread {
+                    titleText.text = progress.title
+                    messageText.text = progress.message
                 }
-                val keyReadiness = TrackAKeyReadinessValidator.validate(keyStatus)
-                if (!keyReadiness.isReady) {
+            }
+            when (result) {
+                is TerminalSessionResult.Connected -> {
+                    titleText.text = getString(R.string.device_connected)
+                    messageText.text = result.status.message
+                }
+                is TerminalSessionResult.Failed -> {
                     titleText.text = "Connection failed"
-                    messageText.text = "Keys are not ready: ${keyReadiness.message}"
-                    appContainer.deviceRepository.disconnect()
-                    delay(DIALOG_RESULT_DELAY_MILLIS)
-                    dialog.dismiss()
-                    connectionButton.isEnabled = true
-                    refreshConnectionButton()
-                    notifyDeviceConnectionChanged()
-                    return@launch
+                    messageText.text = result.message
                 }
-                appContainer.appLogRepository.add(
-                    AppLogCategory.KEYS,
-                    "Track A key injection finished during device connection"
-                )
-                titleText.text = "Connected"
-                messageText.text = statusLines.joinToString(separator = "\n") +
-                    "\nKeys: ${keyReadiness.message}"
-            } else {
-                titleText.text = "Connection failed"
-                messageText.text = "${requiredFailure.name} is required but unavailable."
-                appContainer.deviceRepository.disconnect()
             }
 
             delay(DIALOG_RESULT_DELAY_MILLIS)
@@ -207,13 +137,57 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    private fun disconnectDevice() {
+    private fun confirmDisconnectAndErase() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.disconnect_warning_title)
+            .setMessage(R.string.disconnect_warning_message)
+            .setNegativeButton(android.R.string.cancel, null)
+            .setPositiveButton(R.string.disconnect_and_erase) { _, _ ->
+                disconnectAndEraseData()
+            }
+            .show()
+    }
+
+    private fun disconnectAndEraseData() {
         lifecycleScope.launch {
+            val dialogView = layoutInflater.inflate(android.R.layout.simple_list_item_2, null)
+            val titleText = dialogView.findViewById<TextView>(android.R.id.text1)
+            val messageText = dialogView.findViewById<TextView>(android.R.id.text2)
+            titleText.text = getString(R.string.disconnect_progress_title)
+            messageText.text = getString(R.string.disconnect_progress_start)
+
+            val container = LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setPadding(48, 36, 48, 24)
+                addView(dialogView)
+                addView(ProgressBar(this@MainActivity).apply {
+                    isIndeterminate = true
+                })
+            }
+            val dialog = AlertDialog.Builder(this@MainActivity)
+                .setView(container)
+                .setCancelable(false)
+                .create()
+            dialog.show()
             connectionButton.isEnabled = false
-            appContainer.deviceRepository.disconnect()
+
+            appContainer.terminalSessionUseCase.disconnectAndErase { progress ->
+                runOnUiThread {
+                    titleText.text = progress.title
+                    messageText.text = progress.message
+                }
+            }
+
+            titleText.text = getString(R.string.disconnect_complete_title)
+            messageText.text = getString(R.string.disconnect_complete_message)
+            delay(DIALOG_RESULT_DELAY_MILLIS)
+            dialog.dismiss()
+
             connectionButton.isEnabled = true
             refreshConnectionButton()
             notifyDeviceConnectionChanged()
+            notifyDataCleared()
+            navController().navigateSingleTop(R.id.homeFragment)
         }
     }
 
@@ -244,26 +218,24 @@ class MainActivity : FragmentActivity() {
         )
     }
 
-    private fun DeviceModuleAvailability.toConnectionChecks(): List<ModuleCheck> {
-        return listOf(
-            ModuleCheck("EMV", emvAvailable, required = true),
-            ModuleCheck("PinPad", pinPadAvailable, required = true),
-            ModuleCheck("PED", pedAvailable, required = true),
-            ModuleCheck("Network", networkAvailable, required = true),
-            ModuleCheck("Printer", printerAvailable, required = false),
-            ModuleCheck("Beeper", beeperAvailable, required = false)
+    private fun notifyDataCleared() {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.navHostFragment) as? NavHostFragment ?: return
+        navHostFragment.childFragmentManager.setFragmentResult(
+            DATA_CLEARED_REQUEST_KEY,
+            Bundle.EMPTY
         )
     }
 
-    private data class ModuleCheck(
-        val name: String,
-        val available: Boolean,
-        val required: Boolean
-    )
+    private fun navController(): NavController {
+        return (
+            supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment
+        ).navController
+    }
 
     companion object {
         const val DEVICE_CONNECTION_CHANGED_REQUEST_KEY = "device_connection_changed"
-        const val MODULE_CHECK_DELAY_MILLIS = 350L
+        const val DATA_CLEARED_REQUEST_KEY = "data_cleared"
         const val DIALOG_RESULT_DELAY_MILLIS = 900L
     }
 }

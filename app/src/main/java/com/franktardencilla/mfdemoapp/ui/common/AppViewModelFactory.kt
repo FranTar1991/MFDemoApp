@@ -9,6 +9,7 @@ import com.franktardencilla.mfdemoapp.ui.keys.KeyManagementViewModel
 import com.franktardencilla.mfdemoapp.ui.logs.LogsViewModel
 import com.franktardencilla.mfdemoapp.ui.result.ResultViewModel
 import com.franktardencilla.mfdemoapp.ui.sale.SaleViewModel
+import com.franktardencilla.mfdemoapp.ui.transaction.TransactionReceiptViewModel
 
 class AppViewModelFactory(
     private val appContainer: AppContainer
@@ -33,11 +34,18 @@ class AppViewModelFactory(
                     appContainer.keyRepository,
                     appContainer.saleRepository,
                     appContainer.transactionRepository,
-                    appContainer.appLogRepository
+                    appContainer.appLogRepository,
+                    appContainer.voucherMapper
                 )
             }
             modelClass.isAssignableFrom(ResultViewModel::class.java) -> {
                 ResultViewModel(appContainer.transactionRepository)
+            }
+            modelClass.isAssignableFrom(TransactionReceiptViewModel::class.java) -> {
+                TransactionReceiptViewModel(
+                    appContainer.transactionRepository,
+                    appContainer.voucherMapper
+                )
             }
             modelClass.isAssignableFrom(LogsViewModel::class.java) -> {
                 LogsViewModel(appContainer.appLogRepository)

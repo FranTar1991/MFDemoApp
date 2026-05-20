@@ -14,4 +14,15 @@ data class Iso8583Message(
     }
 
     fun get(field: Int): String? = fields[field]
+
+    fun withField(
+        field: Int,
+        value: String
+    ): Iso8583Message {
+        return copy(fields = fields + (field to value))
+    }
+
+    fun withoutField(field: Int): Iso8583Message {
+        return copy(fields = fields - field)
+    }
 }

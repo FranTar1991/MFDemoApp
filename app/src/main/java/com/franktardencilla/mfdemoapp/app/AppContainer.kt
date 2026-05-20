@@ -13,6 +13,8 @@ import com.franktardencilla.mfdemoapp.repository.KeyRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
 import com.franktardencilla.mfdemoapp.repository.StanRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
+import com.franktardencilla.mfdemoapp.domain.terminal.TerminalSessionUseCase
+import com.franktardencilla.mfdemoapp.ui.sale.VoucherMapper
 
 class AppContainer(
     context: Context,
@@ -24,7 +26,7 @@ class AppContainer(
         TransactionDatabase::class.java,
         "transactions.db"
     )
-        .addMigrations(TRANSACTION_DB_1_2)
+        .addMigrations(TRANSACTION_DB_1_2, TRANSACTION_DB_2_3)
         .build()
     private val appLogDatabase = Room.databaseBuilder(
         context.applicationContext,
@@ -50,6 +52,13 @@ class AppContainer(
     val appLogRepository = AppLogRepository(
         appLogDatabase.appLogDao()
     )
+    val terminalSessionUseCase = TerminalSessionUseCase(
+        deviceRepository,
+        keyRepository,
+        transactionRepository,
+        appLogRepository
+    )
+    val voucherMapper = VoucherMapper()
 
     private companion object {
         val TRANSACTION_DB_1_2 = object : Migration(1, 2) {
@@ -57,6 +66,24 @@ class AppContainer(
                 db.execSQL("ALTER TABLE transaction_records ADD COLUMN isoRequestSummary TEXT")
                 db.execSQL("ALTER TABLE transaction_records ADD COLUMN isoResponseSummary TEXT")
                 db.execSQL("ALTER TABLE transaction_records ADD COLUMN emvTagSummary TEXT")
+            }
+        }
+
+        val TRANSACTION_DB_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE transaction_records ADD COLUMN baseAmountMinorUnits INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE transaction_records ADD COLUMN tipAmountMinorUnits INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE transaction_records ADD COLUMN taxAmountMinorUnits INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "UPDATE transaction_records SET baseAmountMinorUnits = amountMinorUnits " +
+                        "WHERE baseAmountMinorUnits = 0 AND tipAmountMinorUnits = 0 AND taxAmountMinorUnits = 0"
+                )
             }
         }
     }

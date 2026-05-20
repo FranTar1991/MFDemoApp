@@ -3,6 +3,7 @@ package com.franktardencilla.mfdemoapp.domain.model
 data class TransactionSummary(
     val id: String,
     val amount: MoneyAmount,
+    val amountBreakdown: SaleAmountBreakdown,
     val createdAtMillis: Long,
     val status: TransactionStatus,
     val stan: String?,

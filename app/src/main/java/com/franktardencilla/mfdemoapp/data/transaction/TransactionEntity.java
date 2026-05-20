@@ -13,6 +13,12 @@ public class TransactionEntity {
 
     public long amountMinorUnits;
 
+    public long baseAmountMinorUnits;
+
+    public long tipAmountMinorUnits;
+
+    public long taxAmountMinorUnits;
+
     @NonNull
     public String currencyCode;
 
@@ -54,6 +60,9 @@ public class TransactionEntity {
     public TransactionEntity(
             @NonNull String id,
             long amountMinorUnits,
+            long baseAmountMinorUnits,
+            long tipAmountMinorUnits,
+            long taxAmountMinorUnits,
             @NonNull String currencyCode,
             @NonNull String currencySymbol,
             long createdAtMillis,
@@ -70,6 +79,9 @@ public class TransactionEntity {
     ) {
         this.id = id;
         this.amountMinorUnits = amountMinorUnits;
+        this.baseAmountMinorUnits = baseAmountMinorUnits;
+        this.tipAmountMinorUnits = tipAmountMinorUnits;
+        this.taxAmountMinorUnits = taxAmountMinorUnits;
         this.currencyCode = currencyCode;
         this.currencySymbol = currencySymbol;
         this.createdAtMillis = createdAtMillis;

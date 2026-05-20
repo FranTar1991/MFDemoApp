@@ -3,45 +3,93 @@ package com.franktardencilla.mfdemoapp.device
 import com.franktardencilla.mfdemoapp.data.mockped.MockPedKeyStore
 import com.franktardencilla.mfdemoapp.domain.model.KeySlotMetadata
 import com.franktardencilla.mfdemoapp.domain.model.KeyType
-import com.franktardencilla.mfdemoapp.domain.model.TrackAKeySpec
+import java.security.MessageDigest
 
 class MockPed(
     private val keyStore: MockPedKeyStore
-) {
-    suspend fun getKeySlots(): List<KeySlotMetadata> {
+) : PedKeyManager {
+    override suspend fun getKeySlots(): List<KeySlotMetadata> {
         return keyStore.getKeySlots()
     }
 
-    suspend fun injectMasterKey(keySpec: TrackAKeySpec): KeySlotMetadata {
-        require(keySpec.keyType == KeyType.MASTER) {
-            "Master injection requires a master key spec."
-        }
-
-        return saveSlot(keySpec)
-    }
-
-    suspend fun injectWorkingKey(
-        masterKeySlot: Int,
-        workingKey: TrackAKeySpec
-    ): KeySlotMetadata {
-        require(workingKey.keyType != KeyType.MASTER) {
-            "Working key injection cannot use master key type."
-        }
-        require(masterKeyExists(masterKeySlot)) {
-            "Master key slot $masterKeySlot must exist before injecting a working key."
-        }
-
-        return saveSlot(workingKey)
-    }
-
-    fun verifyKcv(
-        keySlot: KeySlotMetadata,
+    override suspend fun loadMainKey(
+        slot: Int,
+        keyDataHex: String,
         expectedKcv: String
-    ): Boolean {
-        return keySlot.kcv == expectedKcv
+    ): PedKeyOperationResult {
+        if (!keyDataHex.isValidHex()) {
+            return PedKeyOperationResult.Failed("Main key data must be an even-length hexadecimal string.")
+        }
+        return PedKeyOperationResult.Loaded(
+            saveSlot(
+                keyType = KeyType.MASTER,
+                slot = slot,
+                expectedKcv = expectedKcv
+            )
+        )
     }
 
-    suspend fun clearKeys() {
+    override suspend fun loadWorkKey(
+        keyType: KeyType,
+        masterKeySlot: Int,
+        workKeySlot: Int,
+        keyDataHex: String,
+        expectedKcv: String
+    ): PedKeyOperationResult {
+        if (keyType == KeyType.MASTER) {
+            return PedKeyOperationResult.Failed("Working key load cannot use master key type.")
+        }
+        if (!keyDataHex.isValidHex()) {
+            return PedKeyOperationResult.Failed("Working key data must be an even-length hexadecimal string.")
+        }
+        if (!masterKeyExists(masterKeySlot)) {
+            return PedKeyOperationResult.Failed(
+                "Master key slot $masterKeySlot must exist before loading a working key."
+            )
+        }
+
+        return PedKeyOperationResult.Loaded(
+            saveSlot(
+                keyType = keyType,
+                slot = workKeySlot,
+                expectedKcv = expectedKcv
+            )
+        )
+    }
+
+    override suspend fun calcKcv(
+        keyType: KeyType,
+        slot: Int
+    ): String? {
+        return keyStore.getKeySlots()
+            .firstOrNull { storedSlot ->
+                storedSlot.keyType == keyType && storedSlot.slot == slot
+            }
+            ?.kcv
+    }
+
+    override suspend fun calcMac(
+        macKeySlot: Int,
+        dataHex: String
+    ): PedMacResult {
+        if (!dataHex.isValidHex()) {
+            return PedMacResult.Failed("MAC input data must be an even-length hexadecimal string.")
+        }
+        val macSlot = keyStore.getKeySlots()
+            .firstOrNull { storedSlot ->
+                storedSlot.keyType == KeyType.MAC && storedSlot.slot == macKeySlot
+            }
+            ?: return PedMacResult.Failed("MAC key slot $macKeySlot is not loaded.")
+
+        val digestInput = "slot=${macSlot.slot};kcv=${macSlot.kcv};data=$dataHex"
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(digestInput.toByteArray(Charsets.UTF_8))
+        return PedMacResult.Calculated(
+            macHex = digest.toHex().take(MAC_HEX_LENGTH)
+        )
+    }
+
+    override suspend fun clearKeys() {
         keyStore.clearKeySlots()
     }
 
@@ -51,11 +99,15 @@ class MockPed(
         }
     }
 
-    private suspend fun saveSlot(keySpec: TrackAKeySpec): KeySlotMetadata {
+    private suspend fun saveSlot(
+        keyType: KeyType,
+        slot: Int,
+        expectedKcv: String
+    ): KeySlotMetadata {
         val newSlot = KeySlotMetadata(
-            keyType = keySpec.keyType,
-            slot = keySpec.slot,
-            kcv = keySpec.expectedKcv,
+            keyType = keyType,
+            slot = slot,
+            kcv = expectedKcv,
             updatedAtMillis = System.currentTimeMillis()
         )
         val updatedSlots = keyStore.getKeySlots()
@@ -65,5 +117,25 @@ class MockPed(
 
         keyStore.saveKeySlots(updatedSlots)
         return newSlot
+    }
+
+    private fun String.isValidHex(): Boolean {
+        return isNotBlank() &&
+            length % 2 == 0 &&
+            all { character ->
+                character in '0'..'9' ||
+                    character in 'A'..'F' ||
+                    character in 'a'..'f'
+            }
+    }
+
+    private fun ByteArray.toHex(): String {
+        return joinToString(separator = "") { byte ->
+            (byte.toInt() and 0xFF).toString(16).padStart(2, '0')
+        }.uppercase()
+    }
+
+    private companion object {
+        const val MAC_HEX_LENGTH = 16
     }
 }

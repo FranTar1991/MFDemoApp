@@ -7,9 +7,13 @@ import com.franktardencilla.mfdemoapp.data.applog.AppLogEntity
 import com.franktardencilla.mfdemoapp.domain.model.AppLogCategory
 import com.franktardencilla.mfdemoapp.domain.model.AppLogEntry
 import java.util.concurrent.Executors
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class AppLogRepository(
-    private val appLogDao: AppLogDao
+    private val appLogDao: AppLogDao,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
     private val executor = Executors.newSingleThreadExecutor()
     val logs: LiveData<List<AppLogEntry>> = appLogDao.getRecentLive(LOG_LIMIT).map { entries ->
@@ -36,6 +40,12 @@ class AppLogRepository(
 
     fun clear() {
         executor.execute {
+            appLogDao.deleteAll()
+        }
+    }
+
+    suspend fun clearAndWait() {
+        withContext(ioDispatcher) {
             appLogDao.deleteAll()
         }
     }

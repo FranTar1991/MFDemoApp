@@ -33,7 +33,8 @@ class SaleViewModel(
     private val keyRepository: KeyRepository,
     private val saleRepository: SaleRepository,
     private val transactionRepository: TransactionRepository,
-    private val appLogRepository: AppLogRepository
+    private val appLogRepository: AppLogRepository,
+    private val voucherMapper: VoucherMapper
 ) : ViewModel() {
     private val _screenStatus = MutableLiveData("Checking sale readiness...")
     val screenStatus: LiveData<String> = _screenStatus
@@ -155,7 +156,7 @@ class SaleViewModel(
                     publishState(finalState, result.saleResult.message)
                     finishSale(
                         summary = result.saleResult.toReceiptPreview(),
-                        voucher = result.saleResult.toVoucherUiModel(currentBreakdown)
+                        voucher = voucherMapper.fromSaleResult(result.saleResult)
                     )
                 }
                 is SaleDeviceResult.Failed -> {
@@ -165,9 +166,10 @@ class SaleViewModel(
                             amount = request.amount,
                             message = result.message
                         ),
-                        voucher = buildErrorVoucherUiModel(
+                        voucher = voucherMapper.error(
                             breakdown = currentBreakdown,
-                            message = result.message
+                            message = result.message,
+                            cardLine = "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}"
                         )
                     )
                 }
@@ -175,7 +177,10 @@ class SaleViewModel(
                     publishState(SaleState.CANCELED, "Sale canceled")
                     finishSale(
                         summary = buildCanceledReceiptPreview(request.amount),
-                        voucher = buildCanceledVoucherUiModel(currentBreakdown)
+                        voucher = voucherMapper.canceled(
+                            breakdown = currentBreakdown,
+                            cardLine = "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}"
+                        )
                     )
                 }
             }
@@ -416,94 +421,6 @@ class SaleViewModel(
             RECEIPT_SEPARATOR,
             "CUSTOMER COPY"
         ).joinToString(separator = "\n")
-    }
-
-    private fun com.franktardencilla.mfdemoapp.domain.model.SaleResult.toVoucherUiModel(
-        breakdown: SaleAmountBreakdown
-    ): VoucherUiModel {
-        val statusLine = when (status) {
-            TransactionStatus.APPROVED -> "APPROVED"
-            TransactionStatus.DECLINED -> "DECLINED"
-            TransactionStatus.CANCELED -> "CANCELED"
-            TransactionStatus.ERROR -> "ERROR"
-            TransactionStatus.PENDING -> "PENDING"
-        }
-        return VoucherUiModel(
-            merchantName = MERCHANT_NAME,
-            terminalId = TERMINAL_ID,
-            merchantId = MERCHANT_ID,
-            transactionName = "SALE",
-            status = statusLine,
-            cardLine = "${entryMode?.displayName ?: "CARD"} ${maskedPan?.value ?: "unavailable"}",
-            authorizationLine = "AUTH: ${authCode ?: "--"}",
-            invoiceLine = "FACT: ${stan?.padStart(6, '0') ?: "--"}",
-            referenceLine = "REF: ${stan ?: "none"}",
-            dateLine = "DATE: ${receiptTimeFormatter.format(Date())}",
-            amountRows = breakdown.toVoucherAmountRows(),
-            responseLine = "RESPONSE: ${responseCode ?: "none"}",
-            verificationLine = if (status == TransactionStatus.APPROVED) {
-                "** VALID WITHOUT SIGNATURE **"
-            } else {
-                message
-            },
-            copyLine = "-- CUSTOMER COPY --"
-        )
-    }
-
-    private fun buildErrorVoucherUiModel(
-        breakdown: SaleAmountBreakdown,
-        message: String
-    ): VoucherUiModel {
-        return VoucherUiModel(
-            merchantName = MERCHANT_NAME,
-            terminalId = TERMINAL_ID,
-            merchantId = MERCHANT_ID,
-            transactionName = "SALE",
-            status = "ERROR",
-            cardLine = "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}",
-            authorizationLine = "AUTH: --",
-            invoiceLine = "FACT: --",
-            referenceLine = "REF: none",
-            dateLine = "DATE: ${receiptTimeFormatter.format(Date())}",
-            amountRows = breakdown.toVoucherAmountRows(),
-            responseLine = "RESPONSE: none",
-            verificationLine = message,
-            copyLine = "-- CUSTOMER COPY --"
-        )
-    }
-
-    private fun buildCanceledVoucherUiModel(
-        breakdown: SaleAmountBreakdown
-    ): VoucherUiModel {
-        return VoucherUiModel(
-            merchantName = MERCHANT_NAME,
-            terminalId = TERMINAL_ID,
-            merchantId = MERCHANT_ID,
-            transactionName = "SALE",
-            status = "CANCELED",
-            cardLine = "CARD: ${emvTagSummary?.maskedPan?.value ?: "unavailable"}",
-            authorizationLine = "AUTH: --",
-            invoiceLine = "FACT: --",
-            referenceLine = "REF: none",
-            dateLine = "DATE: ${receiptTimeFormatter.format(Date())}",
-            amountRows = breakdown.toVoucherAmountRows(),
-            responseLine = "RESPONSE: canceled",
-            verificationLine = "Sale canceled before completion.",
-            copyLine = "-- CUSTOMER COPY --"
-        )
-    }
-
-    private fun SaleAmountBreakdown.toVoucherAmountRows(): List<VoucherAmountRow> {
-        val rows = mutableListOf<VoucherAmountRow>()
-        rows += VoucherAmountRow("BASE", baseAmount.formatted())
-        if (tipAmount.minorUnits > 0) {
-            rows += VoucherAmountRow("TIP", tipAmount.formatted())
-        }
-        if (taxAmount.minorUnits > 0) {
-            rows += VoucherAmountRow("TAX", taxAmount.formatted())
-        }
-        rows += VoucherAmountRow("TOTAL", totalAmount.formatted(), isTotal = true)
-        return rows
     }
 
     private fun buildErrorReceiptPreview(

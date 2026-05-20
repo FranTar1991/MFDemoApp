@@ -51,6 +51,8 @@
     <string name="clear_results">Clear Results</string>
     <string name="transaction_list_title">Transaction List</string>
     <string name="transaction_detail_title">Transaction Detail</string>
+    <string name="transaction_receipt_title">Transaction Receipt</string>
+    <string name="back_to_transactions">Back to Transactions</string>
     <string name="no_transactions">No transactions stored.</string>
     <string name="recent_transactions_title">Recent Transactions</string>
     <string name="bottom_home">Home</string>
@@ -64,5 +66,16 @@
     <string name="device_disconnect">Disconnect</string>
     <string name="device_connection_title">Device Connection</string>
     <string name="device_connection_progress">Checking payment modules...</string>
+    <string name="disconnect_warning_title">Disconnect device?</string>
+    <string name="disconnect_warning_message">Disconnecting will erase all demo transactions, loaded mock keys, and app logs from this device. This simulates clearing the terminal state before ending the session.</string>
+    <string name="disconnect_and_erase">Disconnect and Erase</string>
+    <string name="disconnect_progress_title">Disconnecting</string>
+    <string name="disconnect_progress_start">Preparing to clear terminal data...</string>
+    <string name="disconnect_progress_transactions">Deleting stored transactions...</string>
+    <string name="disconnect_progress_keys">Deleting loaded mock keys...</string>
+    <string name="disconnect_progress_logs">Deleting app logs...</string>
+    <string name="disconnect_progress_device">Closing device service session...</string>
+    <string name="disconnect_complete_title">Disconnected</string>
+    <string name="disconnect_complete_message">Transactions, keys, and logs were erased.</string>
     <string name="placeholder_message">This screen is ready for the next implementation step.</string>
 </resources>

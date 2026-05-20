@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase;
 
 @Database(
         entities = {TransactionEntity.class},
-        version = 2,
+        version = 3,
         exportSchema = false
 )
 public abstract class TransactionDatabase extends RoomDatabase {

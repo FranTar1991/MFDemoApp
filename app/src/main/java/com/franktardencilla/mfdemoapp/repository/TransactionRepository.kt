@@ -5,6 +5,7 @@ import com.franktardencilla.mfdemoapp.data.transaction.TransactionEntity
 import com.franktardencilla.mfdemoapp.domain.model.CardEntryMode
 import com.franktardencilla.mfdemoapp.domain.model.MaskedPan
 import com.franktardencilla.mfdemoapp.domain.model.MoneyAmount
+import com.franktardencilla.mfdemoapp.domain.model.SaleAmountBreakdown
 import com.franktardencilla.mfdemoapp.domain.model.SaleResult
 import com.franktardencilla.mfdemoapp.domain.model.TransactionSummary
 import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
@@ -33,6 +34,12 @@ class TransactionRepository(
         }
     }
 
+    suspend fun getTransaction(id: String): TransactionSummary? {
+        return withContext(ioDispatcher) {
+            transactionDao.getById(id)?.toSummary()
+        }
+    }
+
     suspend fun clearTransactions() {
         withContext(ioDispatcher) {
             transactionDao.deleteAll()
@@ -43,6 +50,9 @@ class TransactionRepository(
         return TransactionEntity(
             UUID.randomUUID().toString(),
             amount.minorUnits,
+            amountBreakdown.baseAmount.minorUnits,
+            amountBreakdown.tipAmount.minorUnits,
+            amountBreakdown.taxAmount.minorUnits,
             amount.currencyCode,
             amount.currencySymbol,
             System.currentTimeMillis(),
@@ -60,13 +70,15 @@ class TransactionRepository(
     }
 
     private fun TransactionEntity.toSummary(): TransactionSummary {
+        val totalAmount = MoneyAmount(
+            minorUnits = amountMinorUnits,
+            currencyCode = currencyCode,
+            currencySymbol = currencySymbol
+        )
         return TransactionSummary(
             id = id,
-            amount = MoneyAmount(
-                minorUnits = amountMinorUnits,
-                currencyCode = currencyCode,
-                currencySymbol = currencySymbol
-            ),
+            amount = totalAmount,
+            amountBreakdown = toAmountBreakdown(totalAmount),
             createdAtMillis = createdAtMillis,
             status = runCatching { TransactionStatus.valueOf(status) }
                 .getOrDefault(TransactionStatus.ERROR),
@@ -82,6 +94,37 @@ class TransactionRepository(
             isoResponseSummary = isoResponseSummary,
             emvTagSummary = emvTagSummary
         )
+    }
+
+    private fun TransactionEntity.toAmountBreakdown(totalAmount: MoneyAmount): SaleAmountBreakdown {
+        val storedBaseAmount = MoneyAmount(
+            minorUnits = baseAmountMinorUnits,
+            currencyCode = currencyCode,
+            currencySymbol = currencySymbol
+        )
+        val storedTipAmount = MoneyAmount(
+            minorUnits = tipAmountMinorUnits,
+            currencyCode = currencyCode,
+            currencySymbol = currencySymbol
+        )
+        val storedTaxAmount = MoneyAmount(
+            minorUnits = taxAmountMinorUnits,
+            currencyCode = currencyCode,
+            currencySymbol = currencySymbol
+        )
+        val storedTotal = storedBaseAmount.minorUnits +
+            storedTipAmount.minorUnits +
+            storedTaxAmount.minorUnits
+
+        return if (storedTotal == totalAmount.minorUnits) {
+            SaleAmountBreakdown.fromParts(
+                baseAmount = storedBaseAmount,
+                tipAmount = storedTipAmount,
+                taxAmount = storedTaxAmount
+            )
+        } else {
+            SaleAmountBreakdown.fromBaseAmount(totalAmount)
+        }
     }
 
     private fun com.franktardencilla.mfdemoapp.domain.model.IsoMessageSummary.toStoredSummary(): String {

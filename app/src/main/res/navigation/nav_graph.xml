@@ -23,6 +23,9 @@
         <action
             android:id="@+id/action_homeFragment_to_hostSettingsFragment"
             app:destination="@id/hostSettingsFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_transactionReceiptFragment"
+            app:destination="@id/transactionReceiptFragment" />
     </fragment>
 
     <fragment
@@ -75,6 +78,11 @@
         android:id="@+id/resultFragment"
         android:name="com.franktardencilla.mfdemoapp.ui.result.ResultFragment"
         android:label="@string/result_title" />
+
+    <fragment
+        android:id="@+id/transactionReceiptFragment"
+        android:name="com.franktardencilla.mfdemoapp.ui.transaction.TransactionReceiptFragment"
+        android:label="@string/transaction_receipt_title" />
 
     <fragment
         android:id="@+id/logsFragment"

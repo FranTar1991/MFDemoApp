@@ -20,7 +20,8 @@ class Iso8583PackagerTest {
                 41 to "DEMO920",
                 42 to "MFDemoMerchant",
                 49 to "840",
-                55 to "9F0206000000001234"
+                55 to "9F0206000000001234",
+                64 to "A1B2C3D4E5F60708"
             )
         )
 
@@ -34,6 +35,7 @@ class Iso8583PackagerTest {
         assertTrue(text.contains("000000001234"))
         assertTrue(text.contains("000123"))
         assertTrue(text.contains("0189F0206000000001234"))
+        assertTrue(text.contains("A1B2C3D4E5F60708"))
     }
 
     @Test

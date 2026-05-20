@@ -7,10 +7,13 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.franktardencilla.mfdemoapp.MainActivity
 import com.franktardencilla.mfdemoapp.R
 import com.franktardencilla.mfdemoapp.ui.common.appViewModelFactory
+import com.franktardencilla.mfdemoapp.ui.transaction.TransactionReceiptFragment
 
 class HomeFragment : Fragment() {
     private val viewModel: HomeViewModel by viewModels {
@@ -29,7 +32,12 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val noRecentTransactionsText = view.findViewById<TextView>(R.id.noRecentTransactionsText)
-        val transactionAdapter = HomeTransactionAdapter()
+        val transactionAdapter = HomeTransactionAdapter { transaction ->
+            findNavController().navigate(
+                R.id.action_homeFragment_to_transactionReceiptFragment,
+                TransactionReceiptFragment.createArguments(transaction.id)
+            )
+        }
         val recentTransactionsList = view.findViewById<RecyclerView>(R.id.recentTransactionsList)
         recentTransactionsList.layoutManager = LinearLayoutManager(requireContext())
         recentTransactionsList.adapter = transactionAdapter
@@ -41,6 +49,12 @@ class HomeFragment : Fragment() {
             } else {
                 View.GONE
             }
+        }
+        parentFragmentManager.setFragmentResultListener(
+            MainActivity.DATA_CLEARED_REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, _ ->
+            viewModel.refresh()
         }
     }
 

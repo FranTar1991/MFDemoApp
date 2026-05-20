@@ -11,7 +11,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class HomeTransactionAdapter : RecyclerView.Adapter<HomeTransactionAdapter.TransactionViewHolder>() {
+class HomeTransactionAdapter(
+    private val onTransactionClick: (TransactionSummary) -> Unit
+) : RecyclerView.Adapter<HomeTransactionAdapter.TransactionViewHolder>() {
     private val transactions = mutableListOf<TransactionSummary>()
 
     fun submitList(items: List<TransactionSummary>) {
@@ -33,7 +35,7 @@ class HomeTransactionAdapter : RecyclerView.Adapter<HomeTransactionAdapter.Trans
         holder: TransactionViewHolder,
         position: Int
     ) {
-        holder.bind(transactions[position])
+        holder.bind(transactions[position], onTransactionClick)
     }
 
     override fun getItemCount(): Int = transactions.size
@@ -46,7 +48,10 @@ class HomeTransactionAdapter : RecyclerView.Adapter<HomeTransactionAdapter.Trans
         private val timeText = itemView.findViewById<TextView>(R.id.transactionTimeText)
         private val metadataText = itemView.findViewById<TextView>(R.id.transactionMetadataText)
 
-        fun bind(transaction: TransactionSummary) {
+        fun bind(
+            transaction: TransactionSummary,
+            onTransactionClick: (TransactionSummary) -> Unit
+        ) {
             statusText.text = transaction.status.name
             amountText.text = transaction.amount.formatted()
             timeText.text = timeFormatter.format(Date(transaction.createdAtMillis))
@@ -55,6 +60,9 @@ class HomeTransactionAdapter : RecyclerView.Adapter<HomeTransactionAdapter.Trans
                 transaction.entryMode?.displayName ?: "unknown entry",
                 transaction.maskedPan?.value ?: "card unavailable"
             ).joinToString(separator = " | ")
+            itemView.setOnClickListener {
+                onTransactionClick(transaction)
+            }
         }
 
         private companion object {

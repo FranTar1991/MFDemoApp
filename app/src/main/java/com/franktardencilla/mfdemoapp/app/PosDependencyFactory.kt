@@ -47,6 +47,7 @@ class PosDependencyFactory(
             deviceServiceManager,
             mockPed,
             emvProcessor,
+            emvProcessor,
             hostClient,
             saleIsoRequestBuilder
         )
