@@ -4,17 +4,20 @@ import android.app.AlertDialog
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
-import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import com.franktardencilla.mfdemoapp.app.DemoApplication
 import com.franktardencilla.mfdemoapp.domain.terminal.TerminalSessionResult
+import com.franktardencilla.mfdemoapp.ui.common.AppViewModelFactory
+import com.franktardencilla.mfdemoapp.ui.sale.SaleViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -23,15 +26,21 @@ class MainActivity : FragmentActivity() {
         (application as DemoApplication).appContainer
     }
     private lateinit var connectionButton: Button
+    private lateinit var bottomNavBar: ViewGroup
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         connectionButton = findViewById(R.id.deviceConnectionButton)
+        bottomNavBar = findViewById(R.id.bottomNavBar)
         val navController = (
             supportFragmentManager.findFragmentById(R.id.navHostFragment) as NavHostFragment
         ).navController
+        val saleViewModel = ViewModelProvider(
+            this,
+            AppViewModelFactory(appContainer)
+        )[SaleViewModel::class.java]
 
         connectionButton.setOnClickListener {
             showConnectionMenu()
@@ -50,6 +59,9 @@ class MainActivity : FragmentActivity() {
         }
         findViewById<View>(R.id.bottomHostButton).setOnClickListener {
             navController.navigateSingleTop(R.id.hostSettingsFragment)
+        }
+        saleViewModel.saleActive.observe(this) { isActive ->
+            setOperatorNavigationLocked(isActive)
         }
 
         refreshConnectionButton()
@@ -91,22 +103,14 @@ class MainActivity : FragmentActivity() {
 
     private fun connectWithModuleCheck() {
         lifecycleScope.launch {
-            val dialogView = layoutInflater.inflate(android.R.layout.simple_list_item_2, null)
-            val titleText = dialogView.findViewById<TextView>(android.R.id.text1)
-            val messageText = dialogView.findViewById<TextView>(android.R.id.text2)
+            val dialogView = layoutInflater.inflate(R.layout.dialog_terminal_progress, null)
+            val titleText = dialogView.findViewById<TextView>(R.id.dialogProgressTitle)
+            val messageText = dialogView.findViewById<TextView>(R.id.dialogProgressMessage)
+            val progressBar = dialogView.findViewById<ProgressBar>(R.id.dialogProgressBar)
             titleText.text = getString(R.string.device_connection_title)
             messageText.text = getString(R.string.device_connection_progress)
-
-            val container = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 36, 48, 24)
-                addView(dialogView)
-                addView(ProgressBar(this@MainActivity).apply {
-                    isIndeterminate = true
-                })
-            }
             val dialog = AlertDialog.Builder(this@MainActivity)
-                .setView(container)
+                .setView(dialogView)
                 .setCancelable(false)
                 .create()
             dialog.show()
@@ -120,10 +124,14 @@ class MainActivity : FragmentActivity() {
             }
             when (result) {
                 is TerminalSessionResult.Connected -> {
+                    progressBar.isIndeterminate = false
+                    progressBar.progress = PROGRESS_COMPLETE
                     titleText.text = getString(R.string.device_connected)
                     messageText.text = result.status.message
                 }
                 is TerminalSessionResult.Failed -> {
+                    progressBar.isIndeterminate = false
+                    progressBar.progress = PROGRESS_COMPLETE
                     titleText.text = "Connection failed"
                     messageText.text = result.message
                 }
@@ -150,22 +158,14 @@ class MainActivity : FragmentActivity() {
 
     private fun disconnectAndEraseData() {
         lifecycleScope.launch {
-            val dialogView = layoutInflater.inflate(android.R.layout.simple_list_item_2, null)
-            val titleText = dialogView.findViewById<TextView>(android.R.id.text1)
-            val messageText = dialogView.findViewById<TextView>(android.R.id.text2)
+            val dialogView = layoutInflater.inflate(R.layout.dialog_terminal_progress, null)
+            val titleText = dialogView.findViewById<TextView>(R.id.dialogProgressTitle)
+            val messageText = dialogView.findViewById<TextView>(R.id.dialogProgressMessage)
+            val progressBar = dialogView.findViewById<ProgressBar>(R.id.dialogProgressBar)
             titleText.text = getString(R.string.disconnect_progress_title)
             messageText.text = getString(R.string.disconnect_progress_start)
-
-            val container = LinearLayout(this@MainActivity).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(48, 36, 48, 24)
-                addView(dialogView)
-                addView(ProgressBar(this@MainActivity).apply {
-                    isIndeterminate = true
-                })
-            }
             val dialog = AlertDialog.Builder(this@MainActivity)
-                .setView(container)
+                .setView(dialogView)
                 .setCancelable(false)
                 .create()
             dialog.show()
@@ -180,6 +180,8 @@ class MainActivity : FragmentActivity() {
 
             titleText.text = getString(R.string.disconnect_complete_title)
             messageText.text = getString(R.string.disconnect_complete_message)
+            progressBar.isIndeterminate = false
+            progressBar.progress = PROGRESS_COMPLETE
             delay(DIALOG_RESULT_DELAY_MILLIS)
             dialog.dismiss()
 
@@ -206,6 +208,21 @@ class MainActivity : FragmentActivity() {
             }
             connectionButton.backgroundTintList = ColorStateList.valueOf(color)
             connectionButton.setTextColor(getColor(R.color.white))
+        }
+    }
+
+    private fun setOperatorNavigationLocked(isLocked: Boolean) {
+        bottomNavBar.alpha = if (isLocked) NAV_LOCKED_ALPHA else NAV_UNLOCKED_ALPHA
+        bottomNavBar.setChildrenEnabled(!isLocked)
+        connectionButton.isEnabled = !isLocked
+    }
+
+    private fun View.setChildrenEnabled(isEnabled: Boolean) {
+        this.isEnabled = isEnabled
+        if (this is ViewGroup) {
+            for (index in 0 until childCount) {
+                getChildAt(index).setChildrenEnabled(isEnabled)
+            }
         }
     }
 
@@ -237,5 +254,8 @@ class MainActivity : FragmentActivity() {
         const val DEVICE_CONNECTION_CHANGED_REQUEST_KEY = "device_connection_changed"
         const val DATA_CLEARED_REQUEST_KEY = "data_cleared"
         const val DIALOG_RESULT_DELAY_MILLIS = 900L
+        const val PROGRESS_COMPLETE = 100
+        const val NAV_LOCKED_ALPHA = 0.38f
+        const val NAV_UNLOCKED_ALPHA = 1f
     }
 }

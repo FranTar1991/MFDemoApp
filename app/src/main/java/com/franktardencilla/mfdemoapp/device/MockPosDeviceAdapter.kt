@@ -282,7 +282,7 @@ class MockPosDeviceAdapter(
             override suspend fun onOnlineProc(data: EmvOnlineData): EmvOnlineResponse {
                 events.onEvent(
                     SaleEvent.Progress(
-                        "onOnlineProc DE55 length=${data.field55Hex.length} amount=${data.amount}"
+                        "EMV online data ready DE55 length=${data.field55Hex.length} amount=${data.amount}"
                     )
                 )
                 val field55Data = Field55Data(
@@ -309,6 +309,7 @@ class MockPosDeviceAdapter(
                     value = macHex
                 )
                 events.onEvent(SaleEvent.Progress("ISO8583 field 64 MAC attached"))
+                events.onEvent(SaleEvent.Progress("Sending ISO8583 authorization to host simulator"))
                 val response = hostClient.authorizeSale(securedIsoRequest)
                 verifyResponseMacIfPresent(response.responseMessage, macKeySlot)
                 onHostResponse(response)

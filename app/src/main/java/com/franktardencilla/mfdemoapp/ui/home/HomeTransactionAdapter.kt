@@ -4,9 +4,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.franktardencilla.mfdemoapp.R
 import com.franktardencilla.mfdemoapp.domain.model.TransactionSummary
+import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -52,7 +54,10 @@ class HomeTransactionAdapter(
             transaction: TransactionSummary,
             onTransactionClick: (TransactionSummary) -> Unit
         ) {
-            statusText.text = transaction.status.name
+            statusText.text = transaction.status.displayText()
+            statusText.setTextColor(
+                ContextCompat.getColor(itemView.context, transaction.status.statusColorRes())
+            )
             amountText.text = transaction.amount.formatted()
             timeText.text = timeFormatter.format(Date(transaction.createdAtMillis))
             metadataText.text = listOf(
@@ -67,6 +72,21 @@ class HomeTransactionAdapter(
 
         private companion object {
             val timeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+
+            fun TransactionStatus.displayText(): String {
+                return name.lowercase(Locale.US)
+                    .replaceFirstChar { firstChar -> firstChar.titlecase(Locale.US) }
+            }
+
+            fun TransactionStatus.statusColorRes(): Int {
+                return when (this) {
+                    TransactionStatus.APPROVED -> R.color.connection_connected
+                    TransactionStatus.DECLINED,
+                    TransactionStatus.ERROR -> R.color.connection_disconnected
+                    TransactionStatus.CANCELED -> R.color.text_secondary
+                    TransactionStatus.PENDING -> R.color.primary_ink
+                }
+            }
         }
     }
 }

@@ -37,6 +37,30 @@
             android:text="@string/amount_not_set"
             style="@style/AppText.SectionTitle" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:background="@drawable/bg_operator_tile"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                style="@style/AppText.SectionTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/processing_steps_title" />
+
+            <TextView
+                android:id="@+id/processingStepsText"
+                style="@style/AppText.Body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:lineSpacingExtra="4dp"
+                android:text="@string/placeholder_message" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/cancelProcessingSaleButton"
             style="@style/AppButton.Danger"

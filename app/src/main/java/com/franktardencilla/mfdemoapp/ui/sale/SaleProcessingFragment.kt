@@ -31,11 +31,15 @@ class SaleProcessingFragment : Fragment() {
 
         val processingStatusText = view.findViewById<TextView>(R.id.processingStatusText)
         val processingAmountText = view.findViewById<TextView>(R.id.processingAmountText)
+        val processingStepsText = view.findViewById<TextView>(R.id.processingStepsText)
         viewModel.screenStatus.observe(viewLifecycleOwner) { status ->
             processingStatusText.text = status
         }
         viewModel.amountSummary.observe(viewLifecycleOwner) { amount ->
             processingAmountText.text = amount
+        }
+        viewModel.operatorSteps.observe(viewLifecycleOwner) { steps ->
+            processingStepsText.text = steps
         }
         viewModel.saleComplete.observe(viewLifecycleOwner) { isComplete ->
             if (isComplete && !navigatedToVoucher) {

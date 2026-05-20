@@ -39,6 +39,13 @@
     <string name="continue_to_card">Continue</string>
     <string name="present_card_message">Present, insert, or tap card.</string>
     <string name="present_card">Present Card</string>
+    <string name="card_option_insert_title">INSERT</string>
+    <string name="card_option_insert_body">Chip</string>
+    <string name="card_option_tap_title">TAP</string>
+    <string name="card_option_tap_body">Contactless</string>
+    <string name="card_option_swipe_title">SWIPE</string>
+    <string name="card_option_swipe_body">Magstripe</string>
+    <string name="processing_steps_title">Operator steps</string>
     <string name="finish_sale">Finish Sale</string>
     <string name="amount_not_set">Amount: not set</string>
     <string name="primary_host_hint">Primary host</string>

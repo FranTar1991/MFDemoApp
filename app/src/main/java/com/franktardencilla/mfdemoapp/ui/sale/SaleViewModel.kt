@@ -40,6 +40,10 @@ class SaleViewModel(
     val screenStatus: LiveData<String> = _screenStatus
     private val _saleComplete = MutableLiveData(false)
     val saleComplete: LiveData<Boolean> = _saleComplete
+    private val _saleActive = MutableLiveData(false)
+    val saleActive: LiveData<Boolean> = _saleActive
+    private val _operatorSteps = MutableLiveData(buildOperatorSteps(SaleWorkflowStep.READINESS))
+    val operatorSteps: LiveData<String> = _operatorSteps
     private val _voucherSummary = MutableLiveData("No sale result yet.")
     val voucherSummary: LiveData<String> = _voucherSummary
     private val _voucherDetails = MutableLiveData(VoucherUiModel.empty())
@@ -69,6 +73,7 @@ class SaleViewModel(
     fun startSale() {
         viewModelScope.launch {
             _saleComplete.value = false
+            _saleActive.value = true
             saleStateMachine.reset()
             publishState(SaleState.CHECKING_READINESS, "Checking sale readiness")
 
@@ -108,6 +113,7 @@ class SaleViewModel(
                     is SaleEvent.StateChanged -> publishState(event.state, event.message)
                     is SaleEvent.Progress -> {
                         _screenStatus.postValue(event.message)
+                        _operatorSteps.postValue(buildOperatorSteps(event.message.toWorkflowStep()))
                         appLogRepository.add(AppLogCategory.SALE, event.message)
                     }
                     is SaleEvent.EmvDataReady -> {
@@ -226,8 +232,10 @@ class SaleViewModel(
         emvTagSummary = null
         field55Data = null
         _saleComplete.value = false
+        _saleActive.value = false
         _amountSummary.value = "Amount: not set"
         _screenStatus.value = "Ready for new sale"
+        _operatorSteps.value = buildOperatorSteps(SaleWorkflowStep.READINESS)
         _voucherSummary.value = "No sale result yet."
         _voucherDetails.value = VoucherUiModel.empty()
     }
@@ -269,6 +277,7 @@ class SaleViewModel(
         }
         val displayText = "${transition.state.displayName}\n${transition.message}"
         _screenStatus.postValue(displayText)
+        _operatorSteps.postValue(buildOperatorSteps(state.toWorkflowStep()))
         appLogRepository.add(AppLogCategory.SALE, displayText)
     }
 
@@ -279,6 +288,79 @@ class SaleViewModel(
         _voucherSummary.postValue(summary)
         _voucherDetails.postValue(voucher)
         _saleComplete.postValue(true)
+        _saleActive.postValue(false)
+    }
+
+    private fun SaleState.toWorkflowStep(): SaleWorkflowStep {
+        return when (this) {
+            SaleState.IDLE,
+            SaleState.CHECKING_READINESS -> SaleWorkflowStep.READINESS
+            SaleState.WAITING_FOR_CARD,
+            SaleState.CARD_DETECTED -> SaleWorkflowStep.CARD
+            SaleState.READING_EMV,
+            SaleState.EMV_DATA_READY -> SaleWorkflowStep.EMV
+            SaleState.WAITING_FOR_HOST -> SaleWorkflowStep.HOST
+            SaleState.APPROVED,
+            SaleState.DECLINED,
+            SaleState.ERROR,
+            SaleState.CANCELED -> SaleWorkflowStep.RESULT
+        }
+    }
+
+    private fun String.toWorkflowStep(): SaleWorkflowStep {
+        return when {
+            contains("calcMac", ignoreCase = true) ||
+                contains("field 64", ignoreCase = true) -> SaleWorkflowStep.MAC
+            contains("host", ignoreCase = true) ||
+                contains("authorization", ignoreCase = true) -> SaleWorkflowStep.HOST
+            contains("emv", ignoreCase = true) ||
+                contains("online data", ignoreCase = true) ||
+                contains("onOnlineProc", ignoreCase = true) ||
+                contains("onSelApp", ignoreCase = true) ||
+                contains("onConfirmCardNo", ignoreCase = true) ||
+                contains("onCardHolderInputPin", ignoreCase = true) -> SaleWorkflowStep.EMV
+            contains("card", ignoreCase = true) ||
+                contains("searchCard", ignoreCase = true) -> SaleWorkflowStep.CARD
+            else -> SaleWorkflowStep.READINESS
+        }
+    }
+
+    private enum class SaleWorkflowStep {
+        READINESS,
+        CARD,
+        EMV,
+        MAC,
+        HOST,
+        RESULT
+    }
+
+    private companion object {
+        val AMOUNT_PATTERN = Regex("^\\d+(\\.\\d{1,2})?$")
+        val receiptTimeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        const val MERCHANT_NAME = "MFDemo Merchant"
+        const val MERCHANT_ID = "MFDemoMerchant"
+        const val TERMINAL_ID = "DEMO920"
+        const val RECEIPT_SEPARATOR = "------------------------------"
+
+        fun buildOperatorSteps(currentStep: SaleWorkflowStep): String {
+            val steps = listOf(
+                SaleWorkflowStep.READINESS to "Check readiness",
+                SaleWorkflowStep.CARD to "Read card",
+                SaleWorkflowStep.EMV to "Process EMV",
+                SaleWorkflowStep.MAC to "Calculate MAC",
+                SaleWorkflowStep.HOST to "Send to host",
+                SaleWorkflowStep.RESULT to "Finish result"
+            )
+            val currentIndex = steps.indexOfFirst { it.first == currentStep }.coerceAtLeast(0)
+            return steps.mapIndexed { index, step ->
+                val marker = when {
+                    index < currentIndex -> "[x]"
+                    index == currentIndex -> ">"
+                    else -> "[ ]"
+                }
+                "$marker ${step.second}"
+            }.joinToString(separator = "\n")
+        }
     }
 
     private fun parseAmountBreakdown(
@@ -474,12 +556,4 @@ class SaleViewModel(
         ).joinToString(separator = "\n")
     }
 
-    private companion object {
-        val AMOUNT_PATTERN = Regex("^\\d+(\\.\\d{1,2})?$")
-        val receiptTimeFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-        const val MERCHANT_NAME = "MFDemo Merchant"
-        const val MERCHANT_ID = "MFDemoMerchant"
-        const val TERMINAL_ID = "DEMO920"
-        const val RECEIPT_SEPARATOR = "------------------------------"
-    }
 }

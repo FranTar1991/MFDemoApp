@@ -28,6 +28,89 @@
             android:text="@string/present_card_message"
             style="@style/AppText.Status" />
 
+        <LinearLayout
+            android:id="@+id/cardOptionsLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="22dp"
+            android:baselineAligned="false"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_operator_tile"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/AppText.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/card_option_insert_title" />
+
+                <TextView
+                    style="@style/AppText.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="@string/card_option_insert_body" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_operator_tile"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/AppText.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/card_option_tap_title" />
+
+                <TextView
+                    style="@style/AppText.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="@string/card_option_tap_body" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="112dp"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_operator_tile"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/AppText.SectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center"
+                    android:text="@string/card_option_swipe_title" />
+
+                <TextView
+                    style="@style/AppText.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center"
+                    android:text="@string/card_option_swipe_body" />
+            </LinearLayout>
+        </LinearLayout>
+
         <TextView
             android:id="@+id/cardAmountText"
             android:layout_width="match_parent"
