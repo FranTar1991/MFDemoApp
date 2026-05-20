@@ -10,6 +10,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.franktardencilla.mfdemoapp.MainActivity
 import com.franktardencilla.mfdemoapp.R
 import com.franktardencilla.mfdemoapp.ui.common.appViewModelFactory
 
@@ -38,6 +39,12 @@ class SaleAmountFragment : Fragment() {
         viewModel.saleReady.observe(viewLifecycleOwner) { isReady ->
             amountInput.isEnabled = isReady
             view.findViewById<Button>(R.id.continueToCardButton).isEnabled = isReady
+        }
+        parentFragmentManager.setFragmentResultListener(
+            MainActivity.DEVICE_CONNECTION_CHANGED_REQUEST_KEY,
+            viewLifecycleOwner
+        ) { _, _ ->
+            viewModel.checkSaleReadiness()
         }
 
         view.findViewById<Button>(R.id.continueToCardButton).setOnClickListener {

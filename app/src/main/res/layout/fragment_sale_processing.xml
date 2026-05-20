@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,7 +17,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/sale_processing_title"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            style="@style/AppText.ScreenTitle" />
 
         <TextView
             android:id="@+id/processingStatusText"
@@ -25,7 +26,7 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:text="@string/placeholder_message"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.Status" />
 
         <TextView
             android:id="@+id/processingAmountText"
@@ -34,10 +35,11 @@
             android:layout_marginTop="12dp"
             android:gravity="center"
             android:text="@string/amount_not_set"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.SectionTitle" />
 
         <Button
             android:id="@+id/cancelProcessingSaleButton"
+            style="@style/AppButton.Danger"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"

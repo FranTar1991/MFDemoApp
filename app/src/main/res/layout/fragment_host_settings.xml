@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,10 +17,11 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/host_settings_title"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            style="@style/AppText.ScreenTitle" />
 
         <EditText
             android:id="@+id/primaryHostInput"
+            style="@style/AppInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
@@ -29,6 +31,7 @@
 
         <EditText
             android:id="@+id/fallbackHostInput"
+            style="@style/AppInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -38,6 +41,7 @@
 
         <EditText
             android:id="@+id/portInput"
+            style="@style/AppInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -47,6 +51,7 @@
 
         <EditText
             android:id="@+id/timeoutInput"
+            style="@style/AppInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -61,10 +66,11 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:text="@string/placeholder_message"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.Status" />
 
         <Button
             android:id="@+id/saveHostSettingsButton"
+            style="@style/AppButton.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
@@ -72,6 +78,7 @@
 
         <Button
             android:id="@+id/testHostConnectionButton"
+            style="@style/AppButton.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"

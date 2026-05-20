@@ -38,9 +38,6 @@ class KeyManagementFragment : Fragment() {
             keyDetailsText.text = details
         }
 
-        view.findViewById<Button>(R.id.injectTrackAKeysButton).setOnClickListener {
-            viewModel.injectTrackADemoKeys()
-        }
         view.findViewById<Button>(R.id.clearKeysButton).setOnClickListener {
             showClearKeysConfirmation()
         }

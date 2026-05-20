@@ -18,8 +18,7 @@ class AppViewModelFactory(
         return when {
             modelClass.isAssignableFrom(HomeViewModel::class.java) -> {
                 HomeViewModel(
-                    appContainer.deviceRepository,
-                    appContainer.keyRepository
+                    appContainer.transactionRepository
                 )
             }
             modelClass.isAssignableFrom(KeyManagementViewModel::class.java) -> {

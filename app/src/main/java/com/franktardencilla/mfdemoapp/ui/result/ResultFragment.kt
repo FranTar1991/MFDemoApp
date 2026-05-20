@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import com.franktardencilla.mfdemoapp.R
@@ -69,6 +70,9 @@ class ResultFragment : Fragment() {
             this.text = text
             isAllCaps = false
             textAlignment = View.TEXT_ALIGNMENT_TEXT_START
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.white))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            setBackgroundResource(R.drawable.bg_button_secondary)
             setOnClickListener {
                 viewModel.selectTransaction(transactionId)
             }
@@ -85,6 +89,7 @@ class ResultFragment : Fragment() {
         return TextView(requireContext()).apply {
             text = getString(R.string.no_transactions)
             gravity = android.view.Gravity.CENTER
+            setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary))
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT

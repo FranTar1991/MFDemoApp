@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,14 +17,14 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/result_title"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            style="@style/AppText.ScreenTitle" />
 
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="@string/transaction_list_title"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.SectionTitle" />
 
         <LinearLayout
             android:id="@+id/transactionList"
@@ -37,7 +38,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
             android:text="@string/transaction_detail_title"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.SectionTitle" />
 
         <TextView
             android:id="@+id/transactionDetailText"
@@ -47,10 +48,11 @@
             android:fontFamily="monospace"
             android:gravity="start"
             android:text="@string/placeholder_message"
-            android:textAppearance="?android:attr/textAppearanceSmall" />
+            style="@style/AppText.Body" />
 
         <Button
             android:id="@+id/refreshResultsButton"
+            style="@style/AppButton.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
@@ -58,6 +60,7 @@
 
         <Button
             android:id="@+id/clearResultsButton"
+            style="@style/AppButton.Danger"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"

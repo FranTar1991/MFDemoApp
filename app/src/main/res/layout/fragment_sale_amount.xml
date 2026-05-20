@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,10 +17,11 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/sale_amount_title"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            style="@style/AppText.ScreenTitle" />
 
         <EditText
             android:id="@+id/saleAmountInput"
+            style="@style/AppInput"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
@@ -33,10 +35,11 @@
             android:layout_marginTop="16dp"
             android:gravity="center"
             android:text="@string/placeholder_message"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.Status" />
 
         <Button
             android:id="@+id/continueToCardButton"
+            style="@style/AppButton.Primary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"

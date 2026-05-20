@@ -42,7 +42,7 @@ class PosDependencyFactory(
         val saleIsoRequestBuilder = SaleIsoRequestBuilder(
             stanProvider = stanRepository::nextStan
         )
-        val deviceServiceManager = MockDeviceServiceManager()
+        val deviceServiceManager = MockDeviceServiceManager(context)
         val posDeviceAdapter = MockPosDeviceAdapter(
             deviceServiceManager,
             mockPed,

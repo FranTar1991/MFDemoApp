@@ -2,6 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/app_background"
     android:fillViewport="true">
 
     <LinearLayout
@@ -16,7 +17,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/key_management_title"
-            android:textAppearance="?android:attr/textAppearanceLarge" />
+            style="@style/AppText.ScreenTitle" />
 
         <TextView
             android:id="@+id/keyStatusText"
@@ -25,33 +26,28 @@
             android:layout_marginTop="20dp"
             android:gravity="center"
             android:text="@string/placeholder_message"
-            android:textAppearance="?android:attr/textAppearanceMedium" />
+            style="@style/AppText.Status" />
 
         <TextView
             android:id="@+id/keyDetailsText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:gravity="center"
+            android:gravity="start"
             android:text="@string/no_key_metadata"
-            android:textAppearance="?android:attr/textAppearanceSmall" />
-
-        <Button
-            android:id="@+id/injectTrackAKeysButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="28dp"
-            android:text="@string/inject_track_a_demo_keys" />
+            style="@style/AppText.Body" />
 
         <Button
             android:id="@+id/clearKeysButton"
+            style="@style/AppButton.Danger"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="28dp"
             android:text="@string/clear_keys" />
 
         <Button
             android:id="@+id/refreshKeysButton"
+            style="@style/AppButton.Secondary"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
