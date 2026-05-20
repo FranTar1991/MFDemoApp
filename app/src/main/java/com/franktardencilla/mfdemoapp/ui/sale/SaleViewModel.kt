@@ -11,6 +11,7 @@ import com.franktardencilla.mfdemoapp.domain.model.EmvTagSummary
 import com.franktardencilla.mfdemoapp.domain.model.Field55Builder
 import com.franktardencilla.mfdemoapp.domain.model.Field55Data
 import com.franktardencilla.mfdemoapp.domain.model.MoneyAmount
+import com.franktardencilla.mfdemoapp.domain.model.SaleAmountBreakdown
 import com.franktardencilla.mfdemoapp.domain.model.SaleRequest
 import com.franktardencilla.mfdemoapp.domain.model.SaleState
 import com.franktardencilla.mfdemoapp.domain.model.SaleStateMachine
@@ -45,7 +46,7 @@ class SaleViewModel(
     private val _saleReady = MutableLiveData(false)
     val saleReady: LiveData<Boolean> = _saleReady
     private val saleStateMachine = SaleStateMachine()
-    private var saleAmount: MoneyAmount? = null
+    private var saleAmountBreakdown: SaleAmountBreakdown? = null
     private var emvTagSummary: EmvTagSummary? = null
     private var field55Data: Field55Data? = null
 
@@ -68,8 +69,8 @@ class SaleViewModel(
             saleStateMachine.reset()
             publishState(SaleState.CHECKING_READINESS, "Checking sale readiness")
 
-            val currentAmount = saleAmount
-            if (currentAmount == null) {
+            val currentBreakdown = saleAmountBreakdown
+            if (currentBreakdown == null) {
                 publishState(SaleState.ERROR, "Enter an amount before starting sale")
                 finishSale("Sale could not start.\nAmount missing.")
                 return@launch
@@ -91,11 +92,13 @@ class SaleViewModel(
             }
 
             val request = SaleRequest(
-                amount = currentAmount
+                amount = currentBreakdown.totalAmount,
+                amountBreakdown = currentBreakdown
             )
             appLogRepository.add(
                 AppLogCategory.SALE,
-                "Starting mock sale for ${request.amount.formatted()}"
+                "Starting mock sale for ${request.amount.formatted()} | " +
+                    request.amountBreakdown.formattedSummary().replace("\n", " | ")
             )
             val result = saleRepository.startSale(request) { event ->
                 when (event) {
@@ -171,18 +174,26 @@ class SaleViewModel(
         }
     }
 
-    fun setAmount(input: String): Boolean {
-        val amountResult = parseAmount(input)
-        if (amountResult is AmountParseResult.Invalid) {
-            _screenStatus.value = amountResult.message
+    fun setAmountBreakdown(
+        baseInput: String,
+        tipInput: String,
+        taxInput: String
+    ): Boolean {
+        val breakdownResult = parseAmountBreakdown(
+            baseInput = baseInput,
+            tipInput = tipInput,
+            taxInput = taxInput
+        )
+        if (breakdownResult is AmountBreakdownParseResult.Invalid) {
+            _screenStatus.value = breakdownResult.message
             return false
         }
 
-        val parsedAmount = (amountResult as AmountParseResult.Valid).amount
-        saleAmount = parsedAmount
-        _amountSummary.value = "Amount: ${parsedAmount.formatted()}"
-        _screenStatus.value = "Amount accepted: ${parsedAmount.formatted()}"
-        _voucherSummary.value = "Sale in progress\nAmount: ${parsedAmount.formatted()}"
+        val parsedBreakdown = (breakdownResult as AmountBreakdownParseResult.Valid).breakdown
+        saleAmountBreakdown = parsedBreakdown
+        _amountSummary.value = parsedBreakdown.formattedSummary()
+        _screenStatus.value = "Amount accepted: ${parsedBreakdown.totalAmount.formatted()}"
+        _voucherSummary.value = "Sale in progress\n${parsedBreakdown.formattedSummary()}"
         _saleComplete.value = false
         return true
     }
@@ -191,14 +202,14 @@ class SaleViewModel(
         viewModelScope.launch {
             saleRepository.cancelSale()
             publishState(SaleState.CANCELED, "Sale cancellation requested")
-            val amountText = saleAmount?.formatted() ?: "not set"
+            val amountText = saleAmountBreakdown?.totalAmount?.formatted() ?: "not set"
             finishSale("Canceled\nAmount: $amountText")
         }
     }
 
     fun resetSale() {
         saleStateMachine.reset()
-        saleAmount = null
+        saleAmountBreakdown = null
         emvTagSummary = null
         field55Data = null
         _saleComplete.value = false
@@ -252,19 +263,74 @@ class SaleViewModel(
         _saleComplete.postValue(true)
     }
 
-    private fun parseAmount(input: String): AmountParseResult {
+    private fun parseAmountBreakdown(
+        baseInput: String,
+        tipInput: String,
+        taxInput: String
+    ): AmountBreakdownParseResult {
+        val baseAmount = parseAmount(
+            input = baseInput,
+            fieldName = "Base amount",
+            allowZero = false
+        )
+        if (baseAmount is AmountParseResult.Invalid) {
+            return AmountBreakdownParseResult.Invalid(baseAmount.message)
+        }
+
+        val tipAmount = parseAmount(
+            input = tipInput,
+            fieldName = "Tip",
+            allowZero = true
+        )
+        if (tipAmount is AmountParseResult.Invalid) {
+            return AmountBreakdownParseResult.Invalid(tipAmount.message)
+        }
+
+        val taxAmount = parseAmount(
+            input = taxInput,
+            fieldName = "Tax",
+            allowZero = true
+        )
+        if (taxAmount is AmountParseResult.Invalid) {
+            return AmountBreakdownParseResult.Invalid(taxAmount.message)
+        }
+
+        return runCatching {
+            val breakdown = SaleAmountBreakdown.fromParts(
+                baseAmount = (baseAmount as AmountParseResult.Valid).amount,
+                tipAmount = (tipAmount as AmountParseResult.Valid).amount,
+                taxAmount = (taxAmount as AmountParseResult.Valid).amount
+            )
+            breakdown.totalAmount.isoAmount12()
+            AmountBreakdownParseResult.Valid(breakdown)
+        }.getOrElse {
+            AmountBreakdownParseResult.Invalid("Total amount is too large.")
+        }
+    }
+
+    private fun parseAmount(
+        input: String,
+        fieldName: String,
+        allowZero: Boolean
+    ): AmountParseResult {
         val normalizedInput = input.trim()
         if (normalizedInput.isEmpty()) {
-            return AmountParseResult.Invalid("Enter an amount.")
+            if (allowZero) {
+                return AmountParseResult.Valid(MoneyAmount(minorUnits = 0))
+            }
+            return AmountParseResult.Invalid("Enter the base amount.")
         }
         if (!AMOUNT_PATTERN.matches(normalizedInput)) {
-            return AmountParseResult.Invalid("Use a valid amount with up to 2 decimals.")
+            return AmountParseResult.Invalid("$fieldName must use a valid amount with up to 2 decimals.")
         }
 
         return runCatching {
             val decimalAmount = BigDecimal(normalizedInput).setScale(2)
-            if (decimalAmount <= BigDecimal.ZERO) {
-                return AmountParseResult.Invalid("Amount must be greater than $0.00.")
+            if (!allowZero && decimalAmount <= BigDecimal.ZERO) {
+                return AmountParseResult.Invalid("Base amount must be greater than $0.00.")
+            }
+            if (allowZero && decimalAmount < BigDecimal.ZERO) {
+                return AmountParseResult.Invalid("$fieldName cannot be negative.")
             }
 
             val amount = MoneyAmount(
@@ -275,8 +341,13 @@ class SaleViewModel(
             amount.isoAmount12()
             AmountParseResult.Valid(amount)
         }.getOrElse {
-            AmountParseResult.Invalid("Amount is too large.")
+            AmountParseResult.Invalid("$fieldName is too large.")
         }
+    }
+
+    private sealed interface AmountBreakdownParseResult {
+        data class Valid(val breakdown: SaleAmountBreakdown) : AmountBreakdownParseResult
+        data class Invalid(val message: String) : AmountBreakdownParseResult
     }
 
     private sealed interface AmountParseResult {

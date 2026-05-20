@@ -31,6 +31,11 @@
     <string name="cancel_sale">Cancel Sale</string>
     <string name="refresh_sale_readiness">Refresh Sale Readiness</string>
     <string name="sale_amount_hint">Amount</string>
+    <string name="base_amount_label">Base Amount</string>
+    <string name="tip_amount_label">Tip</string>
+    <string name="tax_amount_label">Tax</string>
+    <string name="base_amount_hint">0.00</string>
+    <string name="optional_amount_hint">0.00</string>
     <string name="continue_to_card">Continue</string>
     <string name="present_card_message">Present, insert, or tap card.</string>
     <string name="present_card">Present Card</string>

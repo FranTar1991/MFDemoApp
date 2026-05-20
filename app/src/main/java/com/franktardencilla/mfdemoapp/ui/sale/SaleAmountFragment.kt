@@ -1,6 +1,8 @@
 package com.franktardencilla.mfdemoapp.ui.sale
 
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,15 +32,24 @@ class SaleAmountFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val amountInput = view.findViewById<EditText>(R.id.saleAmountInput)
+        val baseAmountInput = view.findViewById<EditText>(R.id.baseAmountInput)
+        val tipAmountInput = view.findViewById<EditText>(R.id.tipAmountInput)
+        val taxAmountInput = view.findViewById<EditText>(R.id.taxAmountInput)
         val amountStatusText = view.findViewById<TextView>(R.id.amountStatusText)
+        val continueButton = view.findViewById<Button>(R.id.continueToCardButton)
+
+        listOf(baseAmountInput, tipAmountInput, taxAmountInput).forEach { input ->
+            input.addTextChangedListener(PosAmountTextWatcher(input))
+        }
 
         viewModel.screenStatus.observe(viewLifecycleOwner) { status ->
             amountStatusText.text = status
         }
         viewModel.saleReady.observe(viewLifecycleOwner) { isReady ->
-            amountInput.isEnabled = isReady
-            view.findViewById<Button>(R.id.continueToCardButton).isEnabled = isReady
+            baseAmountInput.isEnabled = isReady
+            tipAmountInput.isEnabled = isReady
+            taxAmountInput.isEnabled = isReady
+            continueButton.isEnabled = isReady
         }
         parentFragmentManager.setFragmentResultListener(
             MainActivity.DEVICE_CONNECTION_CHANGED_REQUEST_KEY,
@@ -47,8 +58,14 @@ class SaleAmountFragment : Fragment() {
             viewModel.checkSaleReadiness()
         }
 
-        view.findViewById<Button>(R.id.continueToCardButton).setOnClickListener {
-            if (viewModel.setAmount(amountInput.text.toString())) {
+        continueButton.setOnClickListener {
+            if (
+                viewModel.setAmountBreakdown(
+                    baseInput = baseAmountInput.text.toString(),
+                    tipInput = tipAmountInput.text.toString(),
+                    taxInput = taxAmountInput.text.toString()
+                )
+            ) {
                 findNavController().navigate(R.id.action_saleAmountFragment_to_saleCardFragment)
             }
         }
@@ -57,5 +74,56 @@ class SaleAmountFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         viewModel.checkSaleReadiness()
+    }
+
+    private class PosAmountTextWatcher(
+        private val editText: EditText
+    ) : TextWatcher {
+        private var isFormatting = false
+
+        override fun beforeTextChanged(
+            text: CharSequence?,
+            start: Int,
+            count: Int,
+            after: Int
+        ) = Unit
+
+        override fun onTextChanged(
+            text: CharSequence?,
+            start: Int,
+            before: Int,
+            count: Int
+        ) = Unit
+
+        override fun afterTextChanged(editable: Editable?) {
+            if (isFormatting) {
+                return
+            }
+
+            val digits = editable
+                ?.toString()
+                .orEmpty()
+                .filter { it.isDigit() }
+                .trimStart('0')
+                .ifEmpty { "0" }
+                .take(MAX_MINOR_UNIT_DIGITS)
+            val minorUnits = digits.toLongOrNull() ?: 0L
+            val formattedAmount = formatMinorUnits(minorUnits)
+
+            isFormatting = true
+            editText.setText(formattedAmount)
+            editText.setSelection(formattedAmount.length)
+            isFormatting = false
+        }
+
+        private fun formatMinorUnits(minorUnits: Long): String {
+            val major = minorUnits / 100
+            val cents = minorUnits % 100
+            return "$major.${cents.toString().padStart(2, '0')}"
+        }
+
+        private companion object {
+            const val MAX_MINOR_UNIT_DIGITS = 12
+        }
     }
 }

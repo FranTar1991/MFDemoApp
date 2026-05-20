@@ -19,14 +19,59 @@
             android:text="@string/sale_amount_title"
             style="@style/AppText.ScreenTitle" />
 
-        <EditText
-            android:id="@+id/saleAmountInput"
-            style="@style/AppInput"
+        <TextView
+            style="@style/AppText.SectionTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="28dp"
-            android:hint="@string/sale_amount_hint"
-            android:inputType="numberDecimal" />
+            android:text="@string/base_amount_label" />
+
+        <EditText
+            android:id="@+id/baseAmountInput"
+            style="@style/AppInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="end|center_vertical"
+            android:hint="@string/base_amount_hint"
+            android:inputType="number"
+            android:textSize="28sp" />
+
+        <TextView
+            style="@style/AppText.SectionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/tip_amount_label" />
+
+        <EditText
+            android:id="@+id/tipAmountInput"
+            style="@style/AppInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="end|center_vertical"
+            android:hint="@string/optional_amount_hint"
+            android:inputType="number"
+            android:textSize="24sp" />
+
+        <TextView
+            style="@style/AppText.SectionTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="@string/tax_amount_label" />
+
+        <EditText
+            android:id="@+id/taxAmountInput"
+            style="@style/AppInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="end|center_vertical"
+            android:hint="@string/optional_amount_hint"
+            android:inputType="number"
+            android:textSize="24sp" />
 
         <TextView
             android:id="@+id/amountStatusText"
