@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
-import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
@@ -28,9 +27,9 @@ class SaleVoucherFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val voucherSummaryText = view.findViewById<TextView>(R.id.voucherSummaryText)
-        viewModel.voucherSummary.observe(viewLifecycleOwner) { summary ->
-            voucherSummaryText.text = summary
+        val voucherReceiptView = view.findViewById<VoucherReceiptView>(R.id.voucherReceiptView)
+        viewModel.voucherDetails.observe(viewLifecycleOwner) { voucher ->
+            voucherReceiptView.setVoucher(voucher)
         }
 
         view.findViewById<Button>(R.id.finishSaleButton).setOnClickListener {

@@ -19,16 +19,12 @@
             android:text="@string/sale_voucher_title"
             style="@style/AppText.ScreenTitle" />
 
-        <TextView
-            android:id="@+id/voucherSummaryText"
+        <com.franktardencilla.mfdemoapp.ui.sale.VoucherReceiptView
+            android:id="@+id/voucherReceiptView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:fontFamily="monospace"
-            android:gravity="start"
-            android:lineSpacingExtra="2dp"
-            android:text="@string/placeholder_message"
-            style="@style/AppText.Body" />
+            android:layout_marginHorizontal="4dp" />
 
         <Button
             android:id="@+id/finishSaleButton"
