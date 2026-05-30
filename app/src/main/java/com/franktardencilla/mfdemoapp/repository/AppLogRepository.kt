@@ -1,5 +1,6 @@
 package com.franktardencilla.mfdemoapp.repository
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.map
 import com.franktardencilla.mfdemoapp.data.applog.AppLogDao
@@ -26,12 +27,14 @@ class AppLogRepository(
         category: AppLogCategory,
         message: String
     ) {
+        val redactedMessage = redact(message)
+        Log.i(LOGCAT_TAG, "[${category.name}] $redactedMessage")
         executor.execute {
             appLogDao.insert(
                 AppLogEntity(
                     System.currentTimeMillis(),
                     category.name,
-                    redact(message)
+                    redactedMessage
                 )
             )
             appLogDao.pruneToLatest(LOG_LIMIT)
@@ -66,6 +69,7 @@ class AppLogRepository(
     }
 
     private companion object {
+        const val LOGCAT_TAG = "MFDemoApp"
         const val LOG_LIMIT = 250
         val HEX_SECRET_PATTERN = Regex("\\b[0-9A-Fa-f]{16,}\\b")
         val PAN_PATTERN = Regex("\\b\\d{12,19}\\b")
