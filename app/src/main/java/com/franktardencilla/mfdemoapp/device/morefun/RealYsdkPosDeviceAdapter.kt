@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.os.RemoteException
 import android.graphics.Bitmap
 import com.franktardencilla.mfdemoapp.device.HostClient
-import com.franktardencilla.mfdemoapp.device.PedKeyOperationResult
 import com.franktardencilla.mfdemoapp.device.PedMacResult
 import com.franktardencilla.mfdemoapp.device.PosDeviceAdapter
 import com.franktardencilla.mfdemoapp.device.PrintResult
@@ -31,7 +30,6 @@ import com.franktardencilla.mfdemoapp.domain.model.SaleRequest
 import com.franktardencilla.mfdemoapp.domain.model.SaleResult
 import com.franktardencilla.mfdemoapp.domain.model.SaleState
 import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyInjectionRequest
-import com.franktardencilla.mfdemoapp.domain.model.TrackAKeySpec
 import com.morefun.yapi.device.ped.IPed
 import com.morefun.yapi.device.ped.PedCipher
 import com.morefun.yapi.device.beeper.BeepModeConstrants
@@ -39,9 +37,12 @@ import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
 import com.morefun.yapi.ServiceResult
 import com.morefun.yapi.device.pinpad.OnPinPadInputListener
 import com.morefun.yapi.device.pinpad.DesAlgorithmType
+import com.morefun.yapi.device.pinpad.CheckKeyEnum
 import com.morefun.yapi.device.pinpad.MacAlgorithmType
 import com.morefun.yapi.device.pinpad.PinAlgorithmMode
 import com.morefun.yapi.device.pinpad.PinPadConstrants
+import com.morefun.yapi.device.pinpad.PinPadType
+import com.morefun.yapi.device.pinpad.TDesKeyObj
 import com.morefun.yapi.device.pinpad.WorkKeyType
 import com.morefun.yapi.device.printer.OnPrintListener
 import com.morefun.yapi.device.printer.PrinterConfig
@@ -92,10 +93,13 @@ class RealYsdkPosDeviceAdapter(
 
     override suspend fun getKeyStatus(): KeyStatus {
         return runCatching {
-            if (keyBackend == KeyBackend.PINPAD) {
-                return@runCatching pinPadKeyStatus(
-                    detail = "Real PinPad MK/SK keys: loaded through SDK PinPad fallback."
-                )
+            readPinPadKeyStatusOrNull(
+                detail = "Real PinPad KEK/MK/SK keys: checked through the MoreFun demo flow."
+            )?.let { status ->
+                if (status.isReady) {
+                    keyBackend = KeyBackend.PINPAD
+                }
+                return@runCatching status
             }
 
             val ped = serviceManager.requireEngine().getPed()
@@ -109,7 +113,7 @@ class RealYsdkPosDeviceAdapter(
             val hasMaster = slots.any { it.keyType == KeyType.MASTER }
             val hasMac = slots.any { it.keyType == KeyType.MAC }
             val hasPin = slots.any { it.keyType == KeyType.PIN }
-            KeyStatus(
+            val pedStatus = KeyStatus(
                 readiness = if (hasMaster && hasMac) {
                     KeyReadinessStatus.READY
                 } else {
@@ -127,7 +131,26 @@ class RealYsdkPosDeviceAdapter(
                     append(slotChecks.joinToString("\n"))
                 }
             )
+            if (!pedStatus.isReady) {
+                readPinPadKeyStatusOrNull(
+                    detail = "Real PinPad KEK/MK/SK keys: checked through the MoreFun demo flow."
+                )?.let { pinPadStatus ->
+                    if (pinPadStatus.isReady) {
+                        keyBackend = KeyBackend.PINPAD
+                        return@runCatching pinPadStatus
+                    }
+                }
+            }
+            pedStatus
         }.getOrElse { error ->
+            readPinPadKeyStatusOrNull(
+                detail = "Real PinPad KEK/MK/SK keys: checked through the MoreFun demo flow."
+            )?.let { pinPadStatus ->
+                if (pinPadStatus.isReady) {
+                    keyBackend = KeyBackend.PINPAD
+                    return@getOrElse pinPadStatus
+                }
+            }
             KeyStatus(
                 readiness = KeyReadinessStatus.UNKNOWN,
                 message = "Could not read real PED key status: ${error.message ?: "unknown error"}"
@@ -139,113 +162,46 @@ class RealYsdkPosDeviceAdapter(
         request: TrackAKeyInjectionRequest,
         events: TrackAKeyInjectionEventSink
     ): KeyStatus {
-        val ped = serviceManager.requireEngine().getPed()
-            ?: return KeyStatus(
-                readiness = KeyReadinessStatus.UNKNOWN,
-                message = "PED service unavailable."
-            )
-
-        events.onEvent(TrackAKeyInjectionEvent.Progress("Calling IPed.loadMainKey(slot=${request.masterKey.slot})"))
-        val mainKeyResult = ped.loadMainKey(request.masterKey)
-        if (mainKeyResult is PedKeyOperationResult.Failed) {
-            events.onEvent(TrackAKeyInjectionEvent.Progress(mainKeyResult.message))
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "IPed key loading failed; logging in with businessId=$PINPAD_BUSINESS_ID for PinPad fallback"
-                )
-            )
-            val pinPadLogin = serviceManager.loginWithBusinessId(PINPAD_BUSINESS_ID)
-            events.onEvent(TrackAKeyInjectionEvent.Progress(pinPadLogin.message))
-            if (!pinPadLogin.isConnected) {
-                return KeyStatus(
-                    readiness = KeyReadinessStatus.NOT_READY,
-                    message = "${mainKeyResult.message}\n${pinPadLogin.message}"
-                )
-            }
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "Trying PinPad.loadPlainMKey/loadWKey fallback"
-                )
-            )
-            return loadPinPadDemoKeys(events, mainKeyResult.message)
-        }
         events.onEvent(
             TrackAKeyInjectionEvent.Progress(
-                "IPed.loadMainKey success slot=${request.masterKey.slot} kcv=${request.masterKey.expectedKcv}"
+                "Using PinPad KEK/MK/SK flow from the MoreFun demo"
             )
         )
-
-        events.onEvent(
-            TrackAKeyInjectionEvent.Progress(
-                "Calling IPed.loadWorkKey(MAC, master=${request.masterKey.slot}, slot=${request.macWorkingKey.slot})"
-            )
-        )
-        val macKeyResult = ped.loadWorkKey(
-            masterKeySlot = request.masterKey.slot,
-            spec = request.macWorkingKey
-        )
-        if (macKeyResult is PedKeyOperationResult.Failed) {
-            events.onEvent(TrackAKeyInjectionEvent.Progress(macKeyResult.message))
+        val pinPadLogin = serviceManager.loginWithBusinessId(PINPAD_BUSINESS_ID)
+        events.onEvent(TrackAKeyInjectionEvent.Progress(pinPadLogin.message))
+        if (!pinPadLogin.isConnected) {
             return KeyStatus(
                 readiness = KeyReadinessStatus.NOT_READY,
-                message = macKeyResult.message
+                message = pinPadLogin.message
             )
         }
-        events.onEvent(
-            TrackAKeyInjectionEvent.Progress(
-                "IPed.loadWorkKey MAC success slot=${request.macWorkingKey.slot} kcv=${request.macWorkingKey.expectedKcv}"
-            )
-        )
-
-        val pinKey = request.pinWorkingKey
-        if (pinKey != null) {
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "Calling IPed.loadWorkKey(PIN, master=${request.masterKey.slot}, slot=${pinKey.slot})"
-                )
-            )
-            val pinKeyResult = ped.loadWorkKey(
-                masterKeySlot = request.masterKey.slot,
-                spec = pinKey
-            )
-            if (pinKeyResult is PedKeyOperationResult.Failed) {
-                events.onEvent(TrackAKeyInjectionEvent.Progress(pinKeyResult.message))
-                return KeyStatus(
-                    readiness = KeyReadinessStatus.NOT_READY,
-                    message = pinKeyResult.message
-                )
-            }
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "IPed.loadWorkKey PIN success slot=${pinKey.slot} kcv=${pinKey.expectedKcv}"
-                )
-            )
-        }
-
-        events.onEvent(TrackAKeyInjectionEvent.Progress("Verifying real PED key slots"))
-        keyBackend = KeyBackend.PED
-        loadDemoEmvAids(events)
-        return getKeyStatus()
+        return loadPinPadDemoKeys(events)
     }
 
     override suspend fun clearKeys(): KeyStatus {
         return runCatching {
-            val ped = serviceManager.requireEngine().getPed()
-                ?: throw RemoteException("PED service unavailable.")
-            TRACK_A_SLOTS.forEach { trackedSlot ->
-                runCatching {
-                    ped.deleteKey(trackedSlot.slot, trackedSlot.keyType.toMorefunPedKeyType())
-                }
-            }
+            val engine = serviceManager.requireEngine()
+            val pinPadResults = engine.getPinPad()
+                ?.clearDemoPinPadKeys()
+                ?: listOf("PinPad service unavailable; no PinPad keys deleted.")
+            val pedResults = engine.getPed()
+                ?.clearLegacyPedKeys()
+                ?: listOf("PED service unavailable; no legacy PED keys deleted.")
             keyBackend = null
             KeyStatus(
                 readiness = KeyReadinessStatus.CLEARED,
-                message = "Real PED Track A demo slots cleared."
+                message = buildString {
+                    append("Real Track A key slots cleared.")
+                    append("\n")
+                    append(pinPadResults.joinToString("\n"))
+                    append("\n")
+                    append(pedResults.joinToString("\n"))
+                }
             )
         }.getOrElse { error ->
             KeyStatus(
                 readiness = KeyReadinessStatus.UNKNOWN,
-                message = "Could not clear real PED keys: ${error.message ?: "unknown error"}"
+                message = "Could not clear real Track A keys: ${error.message ?: "unknown error"}"
             )
         }
     }
@@ -1012,146 +968,150 @@ class RealYsdkPosDeviceAdapter(
     }
 
     private suspend fun loadPinPadDemoKeys(
-        events: TrackAKeyInjectionEventSink,
-        pedFailureMessage: String
+        events: TrackAKeyInjectionEventSink
     ): KeyStatus {
         return runCatching {
             val pinPad = serviceManager.requireEngine().getPinPad()
                 ?: throw RemoteException("PinPad service unavailable.")
-            val masterKey = PINPAD_MASTER_KEY_HEX.hexToBytes()
+
+            val initResult = pinPad.initPinPad(PinPadType.INTERNAL)
             events.onEvent(
                 TrackAKeyInjectionEvent.Progress(
-                    "Calling PinPad.loadPlainMKey(slot=$PINPAD_MASTER_KEY_INDEX)"
+                    "PinPad.initPinPad(INTERNAL) result=$initResult (${initResult.describeServiceResult()})"
                 )
             )
-            val masterResult = pinPad.loadPlainMKey(
+            if (initResult != ServiceResult.Success) {
+                return KeyStatus(
+                    readiness = KeyReadinessStatus.NOT_READY,
+                    message = "PinPad.initPinPad(INTERNAL) failed. Result code: " +
+                        "$initResult (${initResult.describeServiceResult()})"
+                )
+            }
+
+            events.onEvent(
+                TrackAKeyInjectionEvent.Progress(
+                    "Calling PinPad.loadKEK(index=$PINPAD_KEK_KEY_INDEX)"
+                )
+            )
+            val kekResult = pinPad.loadKEK(
+                PINPAD_KEK_KEY_INDEX,
+                PINPAD_KEK_KEY_HEX.hexToBytes(),
+                PINPAD_KEK_KCV_HEX.hexToBytes()
+            )
+            events.onEvent(TrackAKeyInjectionEvent.Progress("PinPad.loadKEK result=$kekResult"))
+            if (!kekResult) {
+                return KeyStatus(
+                    readiness = KeyReadinessStatus.NOT_READY,
+                    message = "PinPad.loadKEK failed for index $PINPAD_KEK_KEY_INDEX."
+                )
+            }
+
+            events.onEvent(
+                TrackAKeyInjectionEvent.Progress(
+                    "Calling PinPad.loadEncryptMKey(index=$PINPAD_MASTER_KEY_INDEX, kek=$PINPAD_KEK_KEY_INDEX)"
+                )
+            )
+            val encryptedMasterKey = PINPAD_CIPHER_MASTER_KEY_HEX.hexToBytes()
+            val masterResult = pinPad.loadEncryptMKey(
                 PINPAD_MASTER_KEY_INDEX,
-                masterKey,
-                masterKey.size,
+                encryptedMasterKey,
+                encryptedMasterKey.size,
+                PINPAD_KEK_KEY_INDEX,
                 true
             )
             events.onEvent(
                 TrackAKeyInjectionEvent.Progress(
-                    "PinPad.loadPlainMKey result=$masterResult (${masterResult.describeServiceResult()})"
+                    "PinPad.loadEncryptMKey result=$masterResult (${masterResult.describeServiceResult()})"
                 )
             )
             if (masterResult != ServiceResult.Success) {
                 return KeyStatus(
                     readiness = KeyReadinessStatus.NOT_READY,
-                    message = "$pedFailureMessage\nPinPad.loadPlainMKey failed for slot " +
-                        "$PINPAD_MASTER_KEY_INDEX. Result code: $masterResult (${masterResult.describeServiceResult()})"
+                    message = "PinPad.loadEncryptMKey failed for index " +
+                        "$PINPAD_MASTER_KEY_INDEX using KEK index $PINPAD_KEK_KEY_INDEX. " +
+                        "Result code: $masterResult (${masterResult.describeServiceResult()})"
                 )
             }
 
-            val encryptedWorkKey = PINPAD_WORK_KEY_WITH_KCV_HEX.hexToBytes()
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "Calling PinPad.loadWKey(MAC, slot=$PINPAD_WORK_KEY_INDEX)"
-                )
-            )
-            val macResult = pinPad.loadWKey(
-                PINPAD_WORK_KEY_INDEX,
-                WorkKeyType.MACKEY,
-                encryptedWorkKey,
-                encryptedWorkKey.size
-            )
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "PinPad.loadWKey MAC result=$macResult (${macResult.describeServiceResult()})"
-                )
-            )
-            val finalMacResult = if (macResult == ServiceResult.Success) {
-                macResult
-            } else {
-                events.onEvent(
-                    TrackAKeyInjectionEvent.Progress(
-                        "Encrypted MAC working key failed; trying PinPad.loadPlainWKey(MAC, slot=$PINPAD_WORK_KEY_INDEX)"
-                    )
-                )
-                val plainMacKey = PINPAD_PLAIN_MAC_KEY_HEX.hexToBytes()
-                pinPad.loadPlainWKey(
-                    PINPAD_WORK_KEY_INDEX,
-                    WorkKeyType.MACKEY,
-                    plainMacKey,
-                    plainMacKey.size
-                ).also { result ->
-                    events.onEvent(
-                        TrackAKeyInjectionEvent.Progress(
-                            "PinPad.loadPlainWKey MAC result=$result (${result.describeServiceResult()})"
-                        )
-                    )
-                }
-            }
-            if (finalMacResult != ServiceResult.Success) {
+            if (!hasPinPadMasterKey()) {
                 return KeyStatus(
                     readiness = KeyReadinessStatus.NOT_READY,
-                    message = "$pedFailureMessage\nPinPad.loadWKey MAC failed for slot " +
-                        "$PINPAD_WORK_KEY_INDEX. Result code: $macResult (${macResult.describeServiceResult()})\n" +
-                        "PinPad.loadPlainWKey MAC failed for slot $PINPAD_WORK_KEY_INDEX. " +
-                        "Result code: $finalMacResult (${finalMacResult.describeServiceResult()})"
+                    message = "PinPad master key is not accessible after loadEncryptMKey."
                 )
             }
 
             events.onEvent(
                 TrackAKeyInjectionEvent.Progress(
-                    "Calling PinPad.loadWKey(PIN, slot=$PINPAD_WORK_KEY_INDEX)"
+                    "PinPad master key exists before working keys: ${hasPinPadMasterKey()}"
                 )
             )
-            val pinResult = pinPad.loadWKey(
-                PINPAD_WORK_KEY_INDEX,
-                WorkKeyType.PINKEY,
-                encryptedWorkKey,
-                encryptedWorkKey.size
+            val encryptedPinKey = PINPAD_PIN_WORK_KEY_WITH_KCV_HEX.hexToBytes()
+            val pinResult = pinPad.loadDemoWorkKey(
+                keyType = WorkKeyType.PINKEY,
+                label = "PIN",
+                keyBytes = encryptedPinKey,
+                events = events
             )
-            events.onEvent(
-                TrackAKeyInjectionEvent.Progress(
-                    "PinPad.loadWKey PIN result=$pinResult (${pinResult.describeServiceResult()})"
-                )
-            )
-            val finalPinResult = if (pinResult == ServiceResult.Success) {
-                pinResult
-            } else {
-                events.onEvent(
-                    TrackAKeyInjectionEvent.Progress(
-                        "Encrypted PIN working key failed; trying PinPad.loadPlainWKey(PIN, slot=$PINPAD_WORK_KEY_INDEX)"
-                    )
-                )
-                val plainPinKey = PINPAD_PLAIN_PIN_KEY_HEX.hexToBytes()
-                pinPad.loadPlainWKey(
-                    PINPAD_WORK_KEY_INDEX,
-                    WorkKeyType.PINKEY,
-                    plainPinKey,
-                    plainPinKey.size
-                ).also { result ->
-                    events.onEvent(
-                        TrackAKeyInjectionEvent.Progress(
-                            "PinPad.loadPlainWKey PIN result=$result (${result.describeServiceResult()})"
-                        )
-                    )
-                }
-            }
-            if (finalPinResult != ServiceResult.Success) {
+            if (pinResult != ServiceResult.Success) {
                 return KeyStatus(
                     readiness = KeyReadinessStatus.NOT_READY,
-                    message = "$pedFailureMessage\nPinPad.loadWKey PIN failed for slot " +
-                        "$PINPAD_WORK_KEY_INDEX. Result code: $pinResult (${pinResult.describeServiceResult()})\n" +
-                        "PinPad.loadPlainWKey PIN failed for slot $PINPAD_WORK_KEY_INDEX. " +
-                        "Result code: $finalPinResult (${finalPinResult.describeServiceResult()})"
+                    message = "PinPad.loadWKey PIN failed for slot " +
+                        "$PINPAD_WORK_KEY_INDEX. Result code: $pinResult (${pinResult.describeServiceResult()})"
+                )
+            }
+
+            val encryptedMacKey = PINPAD_MAC_WORK_KEY_WITH_KCV_HEX.hexToBytes()
+            val macResult = pinPad.loadDemoWorkKey(
+                keyType = WorkKeyType.MACKEY,
+                label = "MAC",
+                keyBytes = encryptedMacKey,
+                events = events
+            )
+            if (macResult != ServiceResult.Success) {
+                return KeyStatus(
+                    readiness = KeyReadinessStatus.NOT_READY,
+                    message = "PinPad.loadWKey MAC failed for slot " +
+                        "$PINPAD_WORK_KEY_INDEX. Result code: $macResult (${macResult.describeServiceResult()})"
                 )
             }
 
             keyBackend = KeyBackend.PINPAD
-            events.onEvent(TrackAKeyInjectionEvent.Progress("PinPad MK/SK fallback keys loaded"))
+            events.onEvent(TrackAKeyInjectionEvent.Progress("PinPad KEK/MK/SK keys loaded"))
             loadDemoEmvAids(events)
             pinPadKeyStatus(
-                detail = "Real PinPad MK/SK keys: loaded after IPed fallback.\nOriginal PED error: $pedFailureMessage"
+                detail = "Real PinPad KEK/MK/SK keys: loaded through the MoreFun demo flow."
             )
         }.getOrElse { error ->
             KeyStatus(
                 readiness = KeyReadinessStatus.UNKNOWN,
-                message = "$pedFailureMessage\nPinPad fallback error: ${error.message ?: "unknown error"}"
+                message = "PinPad key loading error: ${error.message ?: "unknown error"}"
             )
         }
+    }
+
+    private fun com.morefun.yapi.device.pinpad.PinPad.loadDemoWorkKey(
+        keyType: Int,
+        label: String,
+        keyBytes: ByteArray,
+        events: TrackAKeyInjectionEventSink
+    ): Int {
+        events.onEvent(
+            TrackAKeyInjectionEvent.Progress(
+                "Calling PinPad.loadWKey($label, slot=$PINPAD_WORK_KEY_INDEX)"
+            )
+        )
+        val result = loadWKey(
+            PINPAD_WORK_KEY_INDEX,
+            keyType,
+            keyBytes,
+            keyBytes.size
+        )
+        events.onEvent(
+            TrackAKeyInjectionEvent.Progress(
+                "PinPad.loadWKey $label result=$result (${result.describeServiceResult()})"
+            )
+        )
+        return result
     }
 
     private fun pinPadKeyStatus(detail: String): KeyStatus {
@@ -1169,19 +1129,130 @@ class RealYsdkPosDeviceAdapter(
                 KeySlotMetadata(
                     keyType = KeyType.MAC,
                     slot = PINPAD_WORK_KEY_INDEX,
-                    kcv = PINPAD_WORK_KCV,
+                    kcv = PINPAD_MAC_WORK_KCV,
                     updatedAtMillis = now,
                     storageLabel = PINPAD_KEY_INDEX_LABEL
                 ),
                 KeySlotMetadata(
                     keyType = KeyType.PIN,
                     slot = PINPAD_WORK_KEY_INDEX,
-                    kcv = PINPAD_WORK_KCV,
+                    kcv = PINPAD_PIN_WORK_KCV,
                     updatedAtMillis = now,
                     storageLabel = PINPAD_KEY_INDEX_LABEL
                 )
             ),
             message = detail
+        )
+    }
+
+    private suspend fun readPinPadKeyStatusOrNull(detail: String): KeyStatus? {
+        return runCatching {
+            val pinPad = serviceManager.requireEngine().getPinPad()
+                ?: return@runCatching null
+            val now = System.currentTimeMillis()
+            val masterKey = pinPad.keyMetadataOrNull(
+                sdkType = CheckKeyEnum.DES_MASTER_KEY,
+                appType = KeyType.MASTER,
+                index = PINPAD_MASTER_KEY_INDEX,
+                updatedAtMillis = now
+            )
+            val macKey = pinPad.keyMetadataOrNull(
+                sdkType = CheckKeyEnum.DES_MAC_KEY,
+                appType = KeyType.MAC,
+                index = PINPAD_WORK_KEY_INDEX,
+                updatedAtMillis = now
+            )
+            val pinKey = pinPad.keyMetadataOrNull(
+                sdkType = CheckKeyEnum.DES_PIN_KEY,
+                appType = KeyType.PIN,
+                index = PINPAD_WORK_KEY_INDEX,
+                updatedAtMillis = now
+            )
+            val slots = listOfNotNull(masterKey, macKey, pinKey)
+            if (slots.isEmpty()) {
+                return@runCatching null
+            }
+            val hasMaster = masterKey != null
+            val hasMac = macKey != null
+            KeyStatus(
+                readiness = if (hasMaster && hasMac) {
+                    KeyReadinessStatus.READY
+                } else {
+                    KeyReadinessStatus.NOT_READY
+                },
+                slots = slots,
+                message = buildString {
+                    append(detail)
+                    append("\n")
+                    append(if (hasMaster) "PinPad master loaded" else "PinPad master missing")
+                    append(", ")
+                    append(if (hasMac) "MAC loaded" else "MAC missing")
+                    append(", ")
+                    append(if (pinKey != null) "PIN loaded" else "PIN optional missing")
+                }
+            )
+        }.getOrNull()
+    }
+
+    private suspend fun hasPinPadMasterKey(): Boolean {
+        return runCatching {
+            serviceManager.requireEngine().getPinPad()
+                ?.hasKey(TDesKeyObj.KeyTypeEnum.DES_MAIN_KEY, PINPAD_MASTER_KEY_INDEX) == true
+        }.getOrDefault(false)
+    }
+
+    private fun com.morefun.yapi.device.pinpad.PinPad.hasKey(
+        keyType: TDesKeyObj.KeyTypeEnum,
+        index: Int
+    ): Boolean {
+        return checkKey(
+            TDesKeyObj(
+                keyType,
+                TDesKeyObj.OperEnum.EXITS_KEY,
+                index
+            )
+        )
+    }
+
+    private fun com.morefun.yapi.device.pinpad.PinPad.deleteKey(
+        keyType: TDesKeyObj.KeyTypeEnum,
+        index: Int
+    ): Boolean {
+        return checkKey(
+            TDesKeyObj(
+                keyType,
+                TDesKeyObj.OperEnum.DELETE_KEY,
+                index
+            )
+        )
+    }
+
+    private fun com.morefun.yapi.device.pinpad.PinPad.keyMetadataOrNull(
+        sdkType: CheckKeyEnum,
+        appType: KeyType,
+        index: Int,
+        updatedAtMillis: Long
+    ): KeySlotMetadata? {
+        val exists = when (appType) {
+            KeyType.MASTER -> hasKey(TDesKeyObj.KeyTypeEnum.DES_MAIN_KEY, index)
+            KeyType.MAC -> hasKey(TDesKeyObj.KeyTypeEnum.DES_WK_MAC, index)
+            KeyType.PIN -> hasKey(TDesKeyObj.KeyTypeEnum.DES_WK_PIN, index)
+            KeyType.DATA,
+            KeyType.DUKPT -> false
+        }
+        if (!exists) {
+            return null
+        }
+        val kcv = getKeyKcv(sdkType, index)
+            ?.getKCV()
+            ?.takeIf { value -> value.isNotBlank() }
+            ?.take(KCV_DISPLAY_LENGTH)
+        return KeySlotMetadata(
+            keyType = appType,
+            slot = index,
+            kcv = kcv,
+            updatedAtMillis = updatedAtMillis,
+            storageLabel = PINPAD_KEY_INDEX_LABEL
         )
     }
 
@@ -1258,6 +1329,7 @@ class RealYsdkPosDeviceAdapter(
             ServiceResult.Success -> "success"
             ServiceResult.PinPad_No_Key_Error -> "no key"
             ServiceResult.PinPad_KeyIdx_Error -> "key index error"
+            ServiceResult.PinPad_Key_NOT_EXITS -> "key does not exist"
             ServiceResult.PinPad_Check_Key_Fail -> "KCV check failed"
             ServiceResult.PinPad_LOAD_KEY_FAIL -> "load key failed"
             ServiceResult.PinPad_Dstkey_Idx_Error -> "destination key index error"
@@ -1265,6 +1337,9 @@ class RealYsdkPosDeviceAdapter(
             ServiceResult.PinPad_Key_Len_Error -> "key length error"
             ServiceResult.PinPad_Key_Type_Error -> "key type error"
             ServiceResult.PinPad_Kcv_Check_Fail -> "KCV check failed"
+            ServiceResult.PinPad_Kcv_Odd_Check_Fail -> "odd KCV check failed"
+            ServiceResult.PinPad_Mac_Error -> "MAC operation error"
+            ServiceResult.PinPad_Ped_Data_Rw_Fail -> "secure key storage read/write failed"
             ServiceResult.PinPad_Other_Error -> "PinPad other error"
             ServiceResult.Device_Not_Ready -> "device not ready"
             ServiceResult.Param_In_Invalid -> "invalid parameter"
@@ -1275,43 +1350,6 @@ class RealYsdkPosDeviceAdapter(
             ServiceResult.Emv_PARA_ERR -> "EMV parameter error"
             ServiceResult.Emv_FallBack -> "EMV fallback"
             else -> "unmapped SDK result"
-        }
-    }
-
-    private fun IPed.loadMainKey(spec: TrackAKeySpec): PedKeyOperationResult {
-        val result = loadMainKey(
-            spec.slot,
-            spec.keyDataHex.hexToBytes(),
-            spec.expectedKcv.hexToBytes()
-        )
-        return if (result == SERVICE_SUCCESS) {
-            PedKeyOperationResult.Loaded(spec.toSlotMetadata())
-        } else {
-            PedKeyOperationResult.Failed(
-                "IPed.loadMainKey failed for slot ${spec.slot}. " +
-                    "Result code: $result (${result.describeServiceResult()})"
-            )
-        }
-    }
-
-    private fun IPed.loadWorkKey(
-        masterKeySlot: Int,
-        spec: TrackAKeySpec
-    ): PedKeyOperationResult {
-        val result = loadWorkKey(
-            spec.keyType.toMorefunPedKeyType(),
-            masterKeySlot,
-            spec.slot,
-            spec.keyDataHex.hexToBytes(),
-            spec.expectedKcv.hexToBytes()
-        )
-        return if (result == SERVICE_SUCCESS) {
-            PedKeyOperationResult.Loaded(spec.toSlotMetadata())
-        } else {
-            PedKeyOperationResult.Failed(
-                "IPed.loadWorkKey failed for ${spec.keyType.displayName} slot ${spec.slot}. " +
-                    "Result code: $result (${result.describeServiceResult()})"
-            )
         }
     }
 
@@ -1351,15 +1389,6 @@ class RealYsdkPosDeviceAdapter(
         }
     }
 
-    private fun TrackAKeySpec.toSlotMetadata(): KeySlotMetadata {
-        return KeySlotMetadata(
-            keyType = keyType,
-            slot = slot,
-            kcv = expectedKcv,
-            updatedAtMillis = System.currentTimeMillis()
-        )
-    }
-
     private fun KeyType.toMorefunPedKeyType(): Int {
         return when (this) {
             KeyType.MASTER -> MorefunKeyType.MAIN_KEY
@@ -1367,6 +1396,34 @@ class RealYsdkPosDeviceAdapter(
             KeyType.PIN -> MorefunKeyType.PIN_KEY
             KeyType.DATA -> MorefunKeyType.TDK_KEY
             KeyType.DUKPT -> MorefunKeyType.TDK_KEY
+        }
+    }
+
+    private fun com.morefun.yapi.device.pinpad.PinPad.clearDemoPinPadKeys(): List<String> {
+        val pinPadSlots = listOf(
+            PinPadTrackedSlot("PinPad master", TDesKeyObj.KeyTypeEnum.DES_MAIN_KEY, PINPAD_MASTER_KEY_INDEX),
+            PinPadTrackedSlot("PinPad MAC", TDesKeyObj.KeyTypeEnum.DES_WK_MAC, PINPAD_WORK_KEY_INDEX),
+            PinPadTrackedSlot("PinPad PIN", TDesKeyObj.KeyTypeEnum.DES_WK_PIN, PINPAD_WORK_KEY_INDEX)
+        )
+        return pinPadSlots.map { slot ->
+            runCatching {
+                val existed = hasKey(slot.sdkKeyType, slot.index)
+                val deleted = if (existed) deleteKey(slot.sdkKeyType, slot.index) else true
+                "${slot.label} slot ${slot.index}: ${if (deleted) "cleared" else "delete failed"}"
+            }.getOrElse { error ->
+                "${slot.label} slot ${slot.index}: delete failed ${error.message ?: "unknown error"}"
+            }
+        }
+    }
+
+    private fun IPed.clearLegacyPedKeys(): List<String> {
+        return TRACK_A_SLOTS.map { trackedSlot ->
+            runCatching {
+                val result = deleteKey(trackedSlot.slot, trackedSlot.keyType.toMorefunPedKeyType())
+                "${trackedSlot.keyType.displayName} PED slot ${trackedSlot.slot}: delete result=$result"
+            }.getOrElse { error ->
+                "${trackedSlot.keyType.displayName} PED slot ${trackedSlot.slot}: delete failed ${error.message ?: "unknown error"}"
+            }
         }
     }
 
@@ -1397,6 +1454,12 @@ class RealYsdkPosDeviceAdapter(
         val slot: Int
     )
 
+    private data class PinPadTrackedSlot(
+        val label: String,
+        val sdkKeyType: TDesKeyObj.KeyTypeEnum,
+        val index: Int
+    )
+
     private data class RealEmvFinish(
         val retCode: Int,
         val data: Bundle
@@ -1419,16 +1482,20 @@ class RealYsdkPosDeviceAdapter(
         const val ISO_FIELD_TRACK_2 = 35
         const val ISO_FIELD_MAC = 64
         const val PIN_WORKING_KEY_SLOT = 1
+        const val PINPAD_KEK_KEY_INDEX = 0
         const val PINPAD_MASTER_KEY_INDEX = 0
         const val PINPAD_WORK_KEY_INDEX = 0
         const val PINPAD_KEY_INDEX_LABEL = "PinPad key index"
         const val PINPAD_BUSINESS_ID = "00000000"
-        const val PINPAD_MASTER_KEY_HEX = "18C44D369D6331B23E80817399CFF164"
+        const val PINPAD_KEK_KEY_HEX = "11111111111111111111111111111111"
+        const val PINPAD_KEK_KCV_HEX = "82E13665"
+        const val PINPAD_CIPHER_MASTER_KEY_HEX = "4B24C397E2D59A29A176FC37909A54E6"
+        const val PINPAD_CIPHER_MASTER_KEY_KCV_HEX = "64C4E1C6"
         const val PINPAD_MASTER_KCV = "64C4E1"
-        const val PINPAD_WORK_KEY_WITH_KCV_HEX = "6FD766B7047D8F6070DDEF2A6B4067F11D7B6C57"
-        const val PINPAD_WORK_KCV = "1D7B6C"
-        const val PINPAD_PLAIN_PIN_KEY_HEX = "33333333333333333333333333333333"
-        const val PINPAD_PLAIN_MAC_KEY_HEX = "070F74F70469F0D9070F74F70469F0D9"
+        const val PINPAD_PIN_WORK_KEY_WITH_KCV_HEX = "DF952C488031F1ECDF952C488031F1ECADC67D84"
+        const val PINPAD_MAC_WORK_KEY_WITH_KCV_HEX = "2459FE25EB0A2A442459FE25EB0A2A4444BA838C"
+        const val PINPAD_PIN_WORK_KCV = "ADC67D"
+        const val PINPAD_MAC_WORK_KCV = "44BA83"
         const val PIN_TIMEOUT_SECONDS = 60
         const val PIN_MIN_LENGTH = 4
         const val PIN_MAX_LENGTH = 6
