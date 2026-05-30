@@ -9,6 +9,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class SaleIsoRequestBuilderTest {
@@ -47,5 +48,27 @@ class SaleIsoRequestBuilderTest {
         assertEquals("MFDemoMerchant", message.get(42))
         assertEquals("840", message.get(49))
         assertEquals("9F0206000000001234", message.get(55))
+    }
+
+    @Test
+    fun build_omitsField55ForMagstripeRequests() {
+        val builder = SaleIsoRequestBuilder(
+            clock = Clock.fixed(
+                Instant.parse("2026-05-20T14:35:40Z"),
+                ZoneOffset.UTC
+            ),
+            stanProvider = { "123456" }
+        )
+
+        val message = builder.build(
+            request = SaleRequest(
+                amount = MoneyAmount(minorUnits = 1234)
+            ),
+            entryMode = CardEntryMode.MAGSTRIPE
+        )
+
+        assertEquals("0200", message.mti)
+        assertEquals("022", message.get(22))
+        assertNull(message.get(55))
     }
 }

@@ -1,5 +1,6 @@
 package com.franktardencilla.mfdemoapp.ui.sale
 
+import android.graphics.Bitmap
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -20,6 +21,8 @@ import com.franktardencilla.mfdemoapp.domain.model.TransactionStatus
 import com.franktardencilla.mfdemoapp.repository.AppLogRepository
 import com.franktardencilla.mfdemoapp.repository.DeviceRepository
 import com.franktardencilla.mfdemoapp.repository.KeyRepository
+import com.franktardencilla.mfdemoapp.repository.NetworkRepository
+import com.franktardencilla.mfdemoapp.repository.PrinterRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 import java.math.BigDecimal
@@ -34,6 +37,8 @@ class SaleViewModel(
     private val saleRepository: SaleRepository,
     private val transactionRepository: TransactionRepository,
     private val appLogRepository: AppLogRepository,
+    private val networkRepository: NetworkRepository,
+    private val printerRepository: PrinterRepository,
     private val voucherMapper: VoucherMapper
 ) : ViewModel() {
     private val _screenStatus = MutableLiveData("Checking sale readiness...")
@@ -52,6 +57,8 @@ class SaleViewModel(
     val amountSummary: LiveData<String> = _amountSummary
     private val _saleReady = MutableLiveData(false)
     val saleReady: LiveData<Boolean> = _saleReady
+    private val _printStatus = MutableLiveData("")
+    val printStatus: LiveData<String> = _printStatus
     private val saleStateMachine = SaleStateMachine()
     private var saleAmountBreakdown: SaleAmountBreakdown? = null
     private var emvTagSummary: EmvTagSummary? = null
@@ -91,6 +98,13 @@ class SaleViewModel(
                 return@launch
             }
 
+            val networkStatus = networkRepository.getNetworkStatus()
+            if (!networkStatus.isConnected) {
+                publishState(SaleState.ERROR, networkStatus.message)
+                finishSale("Sale could not start.\n${networkStatus.message}")
+                return@launch
+            }
+
             val keyStatus = keyRepository.getKeyStatus()
             val keyReadiness = TrackAKeyReadinessValidator.validate(keyStatus)
             if (!keyReadiness.isReady) {
@@ -118,7 +132,9 @@ class SaleViewModel(
                     }
                     is SaleEvent.EmvDataReady -> {
                         emvTagSummary = event.summary
-                        field55Data = Field55Builder.build(event.summary)
+                        field55Data = event.summary.tags
+                            .takeIf { tags -> tags.isNotEmpty() }
+                            ?.let { Field55Builder.build(event.summary) }
                         _voucherSummary.postValue(
                             "Sale in progress\nAmount: ${request.amount.formatted()}\n${event.summary.toVoucherCardSummary()}"
                         )
@@ -126,9 +142,14 @@ class SaleViewModel(
                             AppLogCategory.EMV,
                             event.summary.toLogText()
                         )
-                        appLogRepository.add(
+                        field55Data?.let { data ->
+                            appLogRepository.add(
+                                AppLogCategory.ISO8583,
+                                data.toLogText()
+                            )
+                        } ?: appLogRepository.add(
                             AppLogCategory.ISO8583,
-                            field55Data!!.toLogText()
+                            "Field 55 skipped for magstripe transaction."
                         )
                     }
                     is SaleEvent.IsoRequestReady -> {
@@ -238,6 +259,23 @@ class SaleViewModel(
         _operatorSteps.value = buildOperatorSteps(SaleWorkflowStep.READINESS)
         _voucherSummary.value = "No sale result yet."
         _voucherDetails.value = VoucherUiModel.empty()
+        _printStatus.value = ""
+    }
+
+    fun printVoucher(voucherBitmap: Bitmap) {
+        viewModelScope.launch {
+            _printStatus.value = "Printing voucher..."
+            val result = printerRepository.printVoucher(voucherBitmap)
+            _printStatus.value = result.message
+            appLogRepository.add(
+                AppLogCategory.SALE,
+                if (result.isSuccess) {
+                    "Voucher printed successfully."
+                } else {
+                    "Voucher print failed: ${result.message}"
+                }
+            )
+        }
     }
 
     fun refresh() {
@@ -253,6 +291,11 @@ class SaleViewModel(
         val connectionStatus = deviceRepository.getConnectionStatus()
         if (!connectionStatus.isConnected) {
             return "Connect device service before starting a sale."
+        }
+
+        val networkStatus = networkRepository.getNetworkStatus()
+        if (!networkStatus.isConnected) {
+            return networkStatus.message
         }
 
         val keyReadiness = TrackAKeyReadinessValidator.validate(

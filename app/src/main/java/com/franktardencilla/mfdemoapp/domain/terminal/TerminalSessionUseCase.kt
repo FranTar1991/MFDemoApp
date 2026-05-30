@@ -9,12 +9,14 @@ import com.franktardencilla.mfdemoapp.domain.model.TrackAKeyReadinessValidator
 import com.franktardencilla.mfdemoapp.repository.AppLogRepository
 import com.franktardencilla.mfdemoapp.repository.DeviceRepository
 import com.franktardencilla.mfdemoapp.repository.KeyRepository
+import com.franktardencilla.mfdemoapp.repository.NetworkRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 import kotlinx.coroutines.delay
 
 class TerminalSessionUseCase(
     private val deviceRepository: DeviceRepository,
     private val keyRepository: KeyRepository,
+    private val networkRepository: NetworkRepository,
     private val transactionRepository: TransactionRepository,
     private val appLogRepository: AppLogRepository
 ) {
@@ -51,6 +53,19 @@ class TerminalSessionUseCase(
 
         progress(
             TerminalProgress(
+                title = "Checking Android network",
+                message = statusLines.joinToString("\n") + "\nChecking POS network connectivity..."
+            )
+        )
+        val networkStatus = networkRepository.getNetworkStatus()
+        statusLines += "Android network: ${if (networkStatus.isConnected) "available" else "unavailable"}"
+        if (!networkStatus.isConnected) {
+            deviceRepository.disconnect()
+            return TerminalSessionResult.Failed(networkStatus.message)
+        }
+
+        progress(
+            TerminalProgress(
                 title = "Injecting keys",
                 message = statusLines.joinToString("\n") + "\nPreparing Track A keys..."
             )
@@ -77,8 +92,10 @@ class TerminalSessionUseCase(
 
         val keyReadiness = TrackAKeyReadinessValidator.validate(keyStatus)
         if (!keyReadiness.isReady) {
+            val failureMessage = "Keys are not ready: ${keyReadiness.message}\n${keyStatus.message}"
+            appLogRepository.add(AppLogCategory.KEYS, failureMessage)
             deviceRepository.disconnect()
-            return TerminalSessionResult.Failed("Keys are not ready: ${keyReadiness.message}")
+            return TerminalSessionResult.Failed(failureMessage)
         }
 
         appLogRepository.add(

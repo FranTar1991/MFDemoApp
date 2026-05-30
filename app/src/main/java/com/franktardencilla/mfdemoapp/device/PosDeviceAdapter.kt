@@ -1,5 +1,6 @@
 package com.franktardencilla.mfdemoapp.device
 
+import android.graphics.Bitmap
 import com.franktardencilla.mfdemoapp.domain.model.DeviceConnectionStatus
 import com.franktardencilla.mfdemoapp.domain.model.KeyStatus
 import com.franktardencilla.mfdemoapp.domain.model.SaleRequest
@@ -27,4 +28,6 @@ interface PosDeviceAdapter {
     ): SaleDeviceResult
 
     suspend fun cancelCurrentOperation()
+
+    suspend fun printVoucher(voucherBitmap: Bitmap): PrintResult
 }

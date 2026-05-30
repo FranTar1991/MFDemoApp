@@ -83,7 +83,7 @@ class KeyManagementViewModel(
     private fun KeySlotMetadata.toDisplayText(): String {
         return listOf(
             "Type: ${keyType.displayName}",
-            "Slot: $slot",
+            "$storageLabel: $slot",
             "KCV: ${kcv ?: "not available"}",
             "Updated: ${timestampFormatter.format(Date(updatedAtMillis))}"
         ).joinToString(separator = "\n")

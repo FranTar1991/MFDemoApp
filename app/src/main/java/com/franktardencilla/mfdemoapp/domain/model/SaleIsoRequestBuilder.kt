@@ -13,26 +13,32 @@ class SaleIsoRequestBuilder(
     fun build(
         request: SaleRequest,
         entryMode: CardEntryMode,
-        field55Data: Field55Data
+        field55Data: Field55Data? = null
     ): Iso8583Message {
         val transactionDateTime = LocalDateTime.now(clock)
         return Iso8583Message(
             mti = SALE_MTI,
-            fields = mapOf(
-                FIELD_PROCESSING_CODE to SALE_PROCESSING_CODE,
-                FIELD_AMOUNT to request.amount.isoAmount12(),
-                FIELD_TRANSMISSION_DATE_TIME to transactionDateTime.format(TRANSMISSION_DATE_TIME_FORMAT),
-                FIELD_STAN to stanProvider(),
-                FIELD_LOCAL_TIME to transactionDateTime.format(LOCAL_TIME_FORMAT),
-                FIELD_LOCAL_DATE to transactionDateTime.format(LOCAL_DATE_FORMAT),
-                FIELD_ENTRY_MODE to entryMode.posEntryMode,
-                FIELD_NII to NETWORK_INTERNATIONAL_ID,
-                FIELD_POS_CONDITION_CODE to NORMAL_PRESENTMENT_CONDITION_CODE,
-                FIELD_TERMINAL_ID to terminalId,
-                FIELD_MERCHANT_ID to merchantId,
-                FIELD_CURRENCY_CODE to request.amount.currencyCode,
-                FIELD_55 to field55Data.tlvHex
-            )
+            fields = buildMap {
+                putAll(
+                    mapOf(
+                        FIELD_PROCESSING_CODE to SALE_PROCESSING_CODE,
+                        FIELD_AMOUNT to request.amount.isoAmount12(),
+                        FIELD_TRANSMISSION_DATE_TIME to transactionDateTime.format(TRANSMISSION_DATE_TIME_FORMAT),
+                        FIELD_STAN to stanProvider(),
+                        FIELD_LOCAL_TIME to transactionDateTime.format(LOCAL_TIME_FORMAT),
+                        FIELD_LOCAL_DATE to transactionDateTime.format(LOCAL_DATE_FORMAT),
+                        FIELD_ENTRY_MODE to entryMode.posEntryMode,
+                        FIELD_NII to NETWORK_INTERNATIONAL_ID,
+                        FIELD_POS_CONDITION_CODE to NORMAL_PRESENTMENT_CONDITION_CODE,
+                        FIELD_TERMINAL_ID to terminalId,
+                        FIELD_MERCHANT_ID to merchantId,
+                        FIELD_CURRENCY_CODE to request.amount.currencyCode
+                    )
+                )
+                if (field55Data != null) {
+                    put(FIELD_55, field55Data.tlvHex)
+                }
+            }
         )
     }
 

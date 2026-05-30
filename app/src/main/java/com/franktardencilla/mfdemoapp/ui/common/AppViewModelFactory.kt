@@ -35,6 +35,8 @@ class AppViewModelFactory(
                     appContainer.saleRepository,
                     appContainer.transactionRepository,
                     appContainer.appLogRepository,
+                    appContainer.networkRepository,
+                    appContainer.printerRepository,
                     appContainer.voucherMapper
                 )
             }
@@ -44,6 +46,7 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(TransactionReceiptViewModel::class.java) -> {
                 TransactionReceiptViewModel(
                     appContainer.transactionRepository,
+                    appContainer.printerRepository,
                     appContainer.voucherMapper
                 )
             }
@@ -53,7 +56,8 @@ class AppViewModelFactory(
             modelClass.isAssignableFrom(HostSettingsViewModel::class.java) -> {
                 HostSettingsViewModel(
                     appContainer.hostConfigRepository,
-                    appContainer.appLogRepository
+                    appContainer.appLogRepository,
+                    appContainer.networkRepository
                 )
             }
             else -> error("Unknown ViewModel class: ${modelClass.name}")

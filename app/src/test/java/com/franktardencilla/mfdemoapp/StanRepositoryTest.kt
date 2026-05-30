@@ -44,6 +44,10 @@ class StanRepositoryTest {
                 return latestStan
             }
 
+            override fun getById(id: String): TransactionEntity? {
+                return null
+            }
+
             override fun insert(transaction: TransactionEntity) = Unit
 
             override fun deleteAll() = Unit

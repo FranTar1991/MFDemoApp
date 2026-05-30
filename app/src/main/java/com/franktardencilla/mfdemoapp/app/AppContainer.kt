@@ -10,6 +10,8 @@ import com.franktardencilla.mfdemoapp.repository.AppLogRepository
 import com.franktardencilla.mfdemoapp.repository.DeviceRepository
 import com.franktardencilla.mfdemoapp.repository.HostConfigRepository
 import com.franktardencilla.mfdemoapp.repository.KeyRepository
+import com.franktardencilla.mfdemoapp.repository.NetworkRepository
+import com.franktardencilla.mfdemoapp.repository.PrinterRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
 import com.franktardencilla.mfdemoapp.repository.StanRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
@@ -45,7 +47,9 @@ class AppContainer(
 
     val deviceRepository = DeviceRepository(posDependencies.deviceServiceManager)
     val keyRepository = KeyRepository(posDependencies.posDeviceAdapter)
+    val networkRepository = NetworkRepository(context)
     val saleRepository = SaleRepository(posDependencies.posDeviceAdapter)
+    val printerRepository = PrinterRepository(posDependencies.posDeviceAdapter)
     val transactionRepository = TransactionRepository(
         transactionDatabase.transactionDao()
     )
@@ -55,6 +59,7 @@ class AppContainer(
     val terminalSessionUseCase = TerminalSessionUseCase(
         deviceRepository,
         keyRepository,
+        networkRepository,
         transactionRepository,
         appLogRepository
     )

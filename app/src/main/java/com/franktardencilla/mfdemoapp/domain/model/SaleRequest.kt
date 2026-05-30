@@ -5,6 +5,7 @@ data class SaleRequest(
     val amountBreakdown: SaleAmountBreakdown = SaleAmountBreakdown.fromBaseAmount(amount),
     val preferredEntryModes: List<CardEntryMode> = listOf(
         CardEntryMode.CONTACT,
-        CardEntryMode.CONTACTLESS
+        CardEntryMode.CONTACTLESS,
+        CardEntryMode.MAGSTRIPE
     )
 )

@@ -47,6 +47,7 @@
     <string name="card_option_swipe_body">Magstripe</string>
     <string name="processing_steps_title">Operator steps</string>
     <string name="finish_sale">Finish Sale</string>
+    <string name="print_voucher">Print Voucher</string>
     <string name="amount_not_set">Amount: not set</string>
     <string name="primary_host_hint">Primary host</string>
     <string name="fallback_host_hint">Fallback host</string>

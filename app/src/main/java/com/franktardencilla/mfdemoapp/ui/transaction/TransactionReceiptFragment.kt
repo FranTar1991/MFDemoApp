@@ -12,6 +12,7 @@ import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import com.franktardencilla.mfdemoapp.R
 import com.franktardencilla.mfdemoapp.ui.common.appViewModelFactory
+import com.franktardencilla.mfdemoapp.ui.sale.VoucherBitmapRenderer
 import com.franktardencilla.mfdemoapp.ui.sale.VoucherReceiptView
 
 class TransactionReceiptFragment : Fragment() {
@@ -31,6 +32,7 @@ class TransactionReceiptFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val statusText = view.findViewById<TextView>(R.id.transactionReceiptStatusText)
+        val printStatusText = view.findViewById<TextView>(R.id.transactionReceiptPrintStatusText)
         val receiptView = view.findViewById<VoucherReceiptView>(R.id.transactionReceiptView)
 
         viewModel.status.observe(viewLifecycleOwner) { status ->
@@ -38,6 +40,14 @@ class TransactionReceiptFragment : Fragment() {
         }
         viewModel.voucher.observe(viewLifecycleOwner) { voucher ->
             receiptView.setVoucher(voucher)
+        }
+        viewModel.printStatus.observe(viewLifecycleOwner) { status ->
+            printStatusText.text = status
+            printStatusText.visibility = if (status.isBlank()) View.GONE else View.VISIBLE
+        }
+
+        view.findViewById<Button>(R.id.printTransactionReceiptButton).setOnClickListener {
+            viewModel.printVoucher(VoucherBitmapRenderer.render(receiptView))
         }
 
         view.findViewById<Button>(R.id.backToTransactionsButton).setOnClickListener {

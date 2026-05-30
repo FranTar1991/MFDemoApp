@@ -23,23 +23,23 @@ data class TrackAKeyInjectionRequest(
                 masterKey = TrackAKeySpec(
                     keyType = KeyType.MASTER,
                     slot = 1,
-                    expectedKcv = "A1B2C3",
-                    label = "Demo TMK",
-                    keyDataHex = "00112233445566778899AABBCCDDEEFF"
+                    expectedKcv = "82E13665",
+                    label = "MoreFun demo TMK",
+                    keyDataHex = "111111111111111111111111111111111111111111111111"
                 ),
                 macWorkingKey = TrackAKeySpec(
                     keyType = KeyType.MAC,
-                    slot = 21,
-                    expectedKcv = "D4E5F6",
-                    label = "Demo MAC working key",
-                    keyDataHex = "112233445566778899AABBCCDDEEFF00"
+                    slot = 9,
+                    expectedKcv = "6FB23EAD",
+                    label = "MoreFun demo MAC working key",
+                    keyDataHex = "9E90DE82745E68529E90DE82745E68529E90DE82745E6852"
                 ),
                 pinWorkingKey = TrackAKeySpec(
                     keyType = KeyType.PIN,
-                    slot = 22,
-                    expectedKcv = "789ABC",
-                    label = "Demo PIN working key",
-                    keyDataHex = "2233445566778899AABBCCDDEEFF0011"
+                    slot = 1,
+                    expectedKcv = "6FB23EAD",
+                    label = "MoreFun demo PIN working key",
+                    keyDataHex = "9E90DE82745E68529E90DE82745E68529E90DE82745E6852"
                 )
             )
         }
@@ -57,8 +57,11 @@ data class TrackAKeySpec(
         require(slot >= 0) {
             "Key slot cannot be negative."
         }
-        require(expectedKcv.length == KCV_LENGTH) {
-            "KCV must be $KCV_LENGTH characters."
+        require(expectedKcv.length in KCV_LENGTHS) {
+            "KCV must be 6 or 8 hexadecimal characters."
+        }
+        require(expectedKcv.all { it in '0'..'9' || it in 'A'..'F' || it in 'a'..'f' }) {
+            "KCV must be hexadecimal."
         }
         require(keyDataHex.isNotBlank()) {
             "Key data cannot be blank."
@@ -69,6 +72,6 @@ data class TrackAKeySpec(
     }
 
     private companion object {
-        const val KCV_LENGTH = 6
+        val KCV_LENGTHS = setOf(6, 8)
     }
 }

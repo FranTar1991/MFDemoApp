@@ -9,6 +9,8 @@ import com.franktardencilla.mfdemoapp.device.MockEmvProcessor
 import com.franktardencilla.mfdemoapp.device.MockPed
 import com.franktardencilla.mfdemoapp.device.MockPosDeviceAdapter
 import com.franktardencilla.mfdemoapp.device.SocketIso8583HostClient
+import com.franktardencilla.mfdemoapp.device.morefun.MorefunDeviceServiceManager
+import com.franktardencilla.mfdemoapp.device.morefun.RealYsdkPosDeviceAdapter
 import com.franktardencilla.mfdemoapp.domain.model.SaleIsoRequestBuilder
 import com.franktardencilla.mfdemoapp.repository.HostConfigRepository
 import com.franktardencilla.mfdemoapp.repository.StanRepository
@@ -21,9 +23,7 @@ class PosDependencyFactory(
     fun create(runtimeMode: AppRuntimeMode): PosDependencies {
         return when (runtimeMode) {
             AppRuntimeMode.MOCK -> createMockDependencies()
-            AppRuntimeMode.REAL_YSDK -> {
-                error("REAL_YSDK mode is not wired yet. Add YsdkDeviceServiceManager and YsdkPosDeviceAdapter first.")
-            }
+            AppRuntimeMode.REAL_YSDK -> createRealYsdkDependencies()
         }
     }
 
@@ -55,6 +55,22 @@ class PosDependencyFactory(
         return PosDependencies(
             deviceServiceManager = deviceServiceManager,
             posDeviceAdapter = posDeviceAdapter
+        )
+    }
+
+    private fun createRealYsdkDependencies(): PosDependencies {
+        val deviceServiceManager = MorefunDeviceServiceManager(context)
+        val hostClient = SocketIso8583HostClient(hostConfigRepository)
+        val saleIsoRequestBuilder = SaleIsoRequestBuilder(
+            stanProvider = stanRepository::nextStan
+        )
+        return PosDependencies(
+            deviceServiceManager = deviceServiceManager,
+            posDeviceAdapter = RealYsdkPosDeviceAdapter(
+                serviceManager = deviceServiceManager,
+                hostClient = hostClient,
+                saleIsoRequestBuilder = saleIsoRequestBuilder
+            )
         )
     }
 }

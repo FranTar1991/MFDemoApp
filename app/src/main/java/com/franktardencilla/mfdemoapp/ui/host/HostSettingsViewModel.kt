@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.franktardencilla.mfdemoapp.domain.model.HostConfig
 import com.franktardencilla.mfdemoapp.repository.AppLogRepository
 import com.franktardencilla.mfdemoapp.repository.HostConfigRepository
+import com.franktardencilla.mfdemoapp.repository.NetworkRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.net.InetSocketAddress
@@ -14,7 +15,8 @@ import java.net.Socket
 
 class HostSettingsViewModel(
     private val hostConfigRepository: HostConfigRepository,
-    private val appLogRepository: AppLogRepository
+    private val appLogRepository: AppLogRepository,
+    private val networkRepository: NetworkRepository
 ) : ViewModel() {
     private val _hostConfig = MutableLiveData(hostConfigRepository.getHostConfig())
     val hostConfig: LiveData<HostConfig> = _hostConfig
@@ -47,6 +49,15 @@ class HostSettingsViewModel(
     ) {
         val config = parseConfig(primaryHost, fallbackHost, portText, timeoutText)
             ?: return
+        val networkStatus = networkRepository.getNetworkStatus()
+        if (!networkStatus.isConnected) {
+            _status.value = networkStatus.message
+            appLogRepository.add(
+                com.franktardencilla.mfdemoapp.domain.model.AppLogCategory.ISO8583,
+                "Host connection test skipped | ${networkStatus.message}"
+            )
+            return
+        }
         _status.value = "Testing host connection..."
         viewModelScope.launch(Dispatchers.IO) {
             val result = config.hosts.firstNotNullOfOrNull { host ->

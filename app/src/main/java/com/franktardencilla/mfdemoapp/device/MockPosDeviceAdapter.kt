@@ -1,5 +1,6 @@
 package com.franktardencilla.mfdemoapp.device
 
+import android.graphics.Bitmap
 import com.franktardencilla.mfdemoapp.domain.model.DeviceConnectionStatus
 import com.franktardencilla.mfdemoapp.domain.model.Field55Data
 import com.franktardencilla.mfdemoapp.domain.model.HostSaleResponse
@@ -238,6 +239,14 @@ class MockPosDeviceAdapter(
         emvTransactionProcessor.endPBOC()
     }
 
+    override suspend fun printVoucher(voucherBitmap: Bitmap): PrintResult {
+        delay(MOCK_PRINT_DELAY_MILLIS)
+        return PrintResult(
+            isSuccess = true,
+            message = "Mock printer accepted voucher image."
+        )
+    }
+
     private fun buildMockEmvCallbacks(
         request: SaleRequest,
         detectedCard: DetectedCard,
@@ -400,7 +409,8 @@ class MockPosDeviceAdapter(
 
     private companion object {
         const val MOCK_SALE_STEP_DELAY_MILLIS = 600L
-        const val CARD_SEARCH_TIMEOUT_SECONDS = 30
+        const val MOCK_PRINT_DELAY_MILLIS = 500L
+        const val CARD_SEARCH_TIMEOUT_SECONDS = 20
         const val ISO_FIELD_MAC = 64
         const val MOCK_PIN_BLOCK = "0123456789ABCDEF"
         const val MOCK_KSN = "FFFF9876543210E00001"
