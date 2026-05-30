@@ -14,6 +14,7 @@ import com.franktardencilla.mfdemoapp.repository.NetworkRepository
 import com.franktardencilla.mfdemoapp.repository.PrinterRepository
 import com.franktardencilla.mfdemoapp.repository.SaleRepository
 import com.franktardencilla.mfdemoapp.repository.StanRepository
+import com.franktardencilla.mfdemoapp.repository.TerminalSessionPreferenceRepository
 import com.franktardencilla.mfdemoapp.repository.TransactionRepository
 import com.franktardencilla.mfdemoapp.domain.terminal.TerminalSessionUseCase
 import com.franktardencilla.mfdemoapp.ui.sale.VoucherMapper
@@ -56,12 +57,14 @@ class AppContainer(
     val appLogRepository = AppLogRepository(
         appLogDatabase.appLogDao()
     )
+    val terminalSessionPreferenceRepository = TerminalSessionPreferenceRepository(context)
     val terminalSessionUseCase = TerminalSessionUseCase(
         deviceRepository,
         keyRepository,
         networkRepository,
         transactionRepository,
-        appLogRepository
+        appLogRepository,
+        terminalSessionPreferenceRepository
     )
     val voucherMapper = VoucherMapper()
 

@@ -65,6 +65,7 @@ class MainActivity : FragmentActivity() {
         }
 
         refreshConnectionButton()
+        restoreConnectedSessionIfNeeded()
     }
 
     private fun NavController.navigateSingleTop(destinationId: Int) {
@@ -134,6 +135,61 @@ class MainActivity : FragmentActivity() {
                     progressBar.progress = PROGRESS_COMPLETE
                     titleText.text = "Connection failed"
                     messageText.text = result.message
+                }
+                TerminalSessionResult.NotRequested -> Unit
+            }
+
+            delay(DIALOG_RESULT_DELAY_MILLIS)
+            dialog.dismiss()
+            connectionButton.isEnabled = true
+            refreshConnectionButton()
+            notifyDeviceConnectionChanged()
+        }
+    }
+
+    private fun restoreConnectedSessionIfNeeded() {
+        if (!appContainer.terminalSessionUseCase.shouldRestoreConnectedSession()) {
+            return
+        }
+
+        lifecycleScope.launch {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_terminal_progress, null)
+            val titleText = dialogView.findViewById<TextView>(R.id.dialogProgressTitle)
+            val messageText = dialogView.findViewById<TextView>(R.id.dialogProgressMessage)
+            val progressBar = dialogView.findViewById<ProgressBar>(R.id.dialogProgressBar)
+            titleText.text = "Restoring session"
+            messageText.text = "Reopening device service session..."
+            val dialog = AlertDialog.Builder(this@MainActivity)
+                .setView(dialogView)
+                .setCancelable(false)
+                .create()
+            dialog.show()
+            connectionButton.isEnabled = false
+
+            val result = appContainer.terminalSessionUseCase.restoreConnectedSession { progress ->
+                runOnUiThread {
+                    titleText.text = progress.title
+                    messageText.text = progress.message
+                }
+            }
+            when (result) {
+                is TerminalSessionResult.Connected -> {
+                    progressBar.isIndeterminate = false
+                    progressBar.progress = PROGRESS_COMPLETE
+                    titleText.text = getString(R.string.device_connected)
+                    messageText.text = result.status.message
+                }
+                is TerminalSessionResult.Failed -> {
+                    progressBar.isIndeterminate = false
+                    progressBar.progress = PROGRESS_COMPLETE
+                    titleText.text = "Session restore failed"
+                    messageText.text = result.message
+                }
+                TerminalSessionResult.NotRequested -> {
+                    dialog.dismiss()
+                    connectionButton.isEnabled = true
+                    refreshConnectionButton()
+                    return@launch
                 }
             }
 
