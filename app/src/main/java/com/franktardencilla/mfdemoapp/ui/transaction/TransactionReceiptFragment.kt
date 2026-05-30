@@ -47,7 +47,7 @@ class TransactionReceiptFragment : Fragment() {
         }
 
         view.findViewById<Button>(R.id.printTransactionReceiptButton).setOnClickListener {
-            viewModel.printVoucher(VoucherBitmapRenderer.render(receiptView))
+            viewModel.printVoucher(VoucherBitmapRenderer.renderForPrint(receiptView))
         }
 
         view.findViewById<Button>(R.id.backToTransactionsButton).setOnClickListener {

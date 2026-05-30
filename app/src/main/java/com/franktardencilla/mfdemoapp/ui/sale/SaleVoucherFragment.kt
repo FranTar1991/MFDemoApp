@@ -39,7 +39,7 @@ class SaleVoucherFragment : Fragment() {
         }
 
         view.findViewById<Button>(R.id.printSaleVoucherButton).setOnClickListener {
-            viewModel.printVoucher(VoucherBitmapRenderer.render(voucherReceiptView))
+            viewModel.printVoucher(VoucherBitmapRenderer.renderForPrint(voucherReceiptView))
         }
 
         view.findViewById<Button>(R.id.finishSaleButton).setOnClickListener {

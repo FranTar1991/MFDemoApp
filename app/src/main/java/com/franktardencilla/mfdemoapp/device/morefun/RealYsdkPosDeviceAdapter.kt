@@ -357,7 +357,7 @@ class RealYsdkPosDeviceAdapter(
                     }
                 },
                 Bundle().apply {
-                    putInt(PrinterConfig.COMMON_GRAYLEVEL, PrinterConfig.PRINT_DENSITY_NORMAL)
+                    putInt(PrinterConfig.COMMON_GRAYLEVEL, PrinterConfig.PRINT_DENSITY_DENSE)
                 }
             )
             if (startResult != ServiceResult.Success) {
