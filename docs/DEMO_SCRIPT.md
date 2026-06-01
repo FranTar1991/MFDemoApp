@@ -12,7 +12,7 @@ Use this script to explain and demonstrate the assignment.
 4. Connect the device from the top menu.
 5. Let the app check services, network, and key readiness.
 
-## Explain The Architecture
+## Architecture Explanation
 
 The app is single-activity MVVM.
 
@@ -21,6 +21,13 @@ The app is single-activity MVVM.
 - Repositories isolate storage, network, logs, keys, and device calls.
 - The device adapter can be mock or real.
 - The simulator is external, not embedded in the app.
+
+Expected explanation:
+
+- The UI does not calculate keys, MAC, or ISO directly.
+- The ViewModel coordinates the workflow.
+- Repositories and device adapters hide implementation details.
+- The state machine prevents invalid transaction flow.
 
 ## Demo Scenario A: Approved Sale
 
@@ -40,6 +47,7 @@ Expected result:
 - Transaction status: `APPROVED`.
 - Response code: `00`.
 - Transaction is stored.
+- Receipt can be opened from the home transaction list.
 
 ## Demo Scenario B: Declined Sale
 
@@ -56,6 +64,7 @@ Expected result:
 - Transaction status: `DECLINED`.
 - Response code: `05`.
 - Transaction is stored, as required.
+- Receipt can be opened from the home transaction list.
 
 ## Demo Scenario C: Cancel During Card Search
 
@@ -79,6 +88,18 @@ Expected result:
 
 - Sale is blocked.
 - App shows actionable key readiness message.
+
+## Optional Screenshot Checklist
+
+Screenshots are acceptable but not required. If screenshots are included, capture:
+
+- Simulator running on port `8001`.
+- Connection checks dialog.
+- Approved voucher for `12.34`.
+- Declined voucher for `99.99`.
+- Home transaction list showing approved and declined transactions.
+- Transaction receipt detail.
+- Logs screen showing redacted ISO/key events.
 
 ## What To Point Out
 

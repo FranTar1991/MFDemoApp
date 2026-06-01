@@ -1,53 +1,58 @@
-# Architecture
+# Architecture Note
 
-The app uses MVVM with a single activity, Navigation library, repositories, and small domain classes.
+The app uses MVVM with a single Activity, Android Navigation, multiple Fragments, ViewModels, repositories, Room persistence, and an external ISO8583 simulator. The goal is to keep the operator workflow simple while keeping payment, device, storage, and host concerns separated enough to switch between mock and real device modes.
 
-## Main Layers
+## Modules And Responsibilities
 
-### UI Layer
+### UI
 
-Fragments render the operator workflow and delegate behavior to ViewModels.
+The UI layer is built around `MainActivity` and Fragments. `MainActivity` owns app-level navigation, bottom navigation, the center sale action, and terminal connection state. Each screen is a Fragment: home, key management, host settings, logs, sale amount, card entry, processing, voucher, and transaction receipt.
 
-- `MainActivity` owns app-level navigation and terminal connection status.
-- `HomeFragment` shows recent transactions.
-- Sale fragments split the workflow into amount, card, processing, and voucher steps.
-- `LogsFragment`, `KeyManagementFragment`, and `HostSettingsFragment` expose support screens.
+ViewModels expose screen state through observable values and delegate business work to repositories/use cases. For example, `SaleViewModel` coordinates the sale flow, but it does not talk directly to Room or Android services.
 
-### ViewModel Layer
+### Domain
 
-ViewModels hold screen state and coordinate use cases/repositories.
+The domain layer contains the payment models and rules:
 
-- `SaleViewModel` owns the sale flow and sale state machine.
-- `HomeViewModel` loads recent transactions.
-- `TransactionReceiptViewModel` loads a stored transaction receipt.
-- `HostSettingsViewModel` validates and saves simulator host settings.
+- `SaleStateMachine` controls legal sale transitions.
+- `SaleIsoRequestBuilder` builds ISO8583 `0200` messages.
+- `TrackAKeyReadinessValidator` decides whether key state is sufficient for sale.
+- `MoneyAmount` and `SaleAmountBreakdown` keep amount, tip, tax, and total handling explicit.
+- `SaleResult` and `TransactionSummary` represent the completed transaction data used by storage and UI.
 
-### Domain Layer
+### Repositories
 
-Domain classes model payment concepts and enforce important rules.
+Repositories isolate persistence, device state, logs, network checks, and host configuration:
 
-- `SaleStateMachine` prevents invalid transaction transitions.
-- `SaleIsoRequestBuilder` creates the ISO8583 authorization request.
-- `TrackAKeyReadinessValidator` decides whether keys are ready for sale.
-- `MoneyAmount` and `SaleAmountBreakdown` keep amount handling explicit.
-
-### Repository Layer
-
-Repositories hide persistence, Android services, and device integration details.
-
-- `TransactionRepository` stores approved and declined transactions.
-- `KeyRepository` exposes key injection/readiness operations.
-- `NetworkRepository` checks Android network availability.
-- `HostConfigRepository` stores simulator host settings.
+- `TransactionRepository` stores approved and declined transactions in Room.
+- `KeyRepository` exposes key injection, readiness, and clearing operations.
+- `HostConfigRepository` stores simulator host IP, fallback host, port, and timeout.
+- `NetworkRepository` validates Android network availability.
 - `AppLogRepository` stores redacted logs and mirrors them to Logcat.
 
-### Device Layer
+### Device Adapters
 
-The app can run through mock or real device adapters.
+The app can run through mock or real device adapters. Both return the same domain result types, so the UI flow remains the same.
 
-- Mock mode simulates a POS device while still using the external ISO8583 simulator.
-- Real mode uses the MoreFun/YSDK jar for PED/PinPad, EMV, beeper, and printer operations.
-- Both modes return the same domain result types so the UI does not care which backend is active.
+- Mock mode simulates card/EMV/PED behavior while still using the external ISO8583 simulator.
+- Real mode uses the MoreFun/YSDK jar for PinPad/PED, EMV card reading, beeper, printer, and MAC calculation.
+
+## Transaction State Machine
+
+The sale flow is state-driven to prevent invalid jumps, such as going from idle directly to host authorization.
+
+```text
+IDLE
+ -> CHECKING_READINESS
+ -> WAITING_FOR_CARD
+ -> CARD_DETECTED
+ -> READING_EMV
+ -> EMV_DATA_READY
+ -> WAITING_FOR_HOST
+ -> APPROVED / DECLINED
+```
+
+`ERROR` and `CANCELED` are allowed from active states so the app can safely react to hardware failure, host failure, or operator cancellation. After a terminal state, the state machine can reset to `IDLE`.
 
 ## Sale Flow
 
@@ -64,7 +69,32 @@ Check key readiness
  -> show/print voucher
 ```
 
-## Simulator
+The result is stored only when a host authorization completes and the device adapter returns `SaleDeviceResult.Completed`. Both approved and declined transactions are stored. Canceled sales and technical failures are shown to the operator but are not stored as approved/declined host transactions.
+
+## Error And Cancel Strategy
+
+The app separates business declines from technical failures:
+
+- Host response `RC=00` becomes `APPROVED`.
+- Host response other than `00`, such as `05`, becomes `DECLINED` and is stored.
+- Device/service/network/key failures become actionable errors and block or stop the sale.
+- Operator cancellation moves the flow to `CANCELED`.
+- If the terminal disconnects, the app warns the user and clears local transactions, logs, and key state as requested.
+
+The connection flow validates device services, Android network, and key readiness before sale. If a required module is unavailable, the message names the failing area instead of leaving the operator with a generic failure.
+
+## Security Considerations
+
+This is a demo implementation, not a production payment application.
+
+- Demo keys are used; no production keys are included.
+- Key readiness is checked through metadata/KCV-style status, not by exposing key values.
+- Plaintext key material, full PAN, PIN blocks, Field 55, Field 64, and track data are redacted from app logs.
+- The real YSDK path uses the secure PinPad/PED APIs for key loading and MAC calculation.
+- Room simulates local transaction/log storage; sensitive payment data is masked.
+- The external simulator validates MAC when Field 64 is present and can require MAC with `-DrequireMac=true`.
+
+## External Simulator
 
 The simulator is a separate Java application. It does not depend on the Android app.
 
