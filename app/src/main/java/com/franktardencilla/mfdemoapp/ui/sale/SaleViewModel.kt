@@ -47,6 +47,8 @@ class SaleViewModel(
     val saleComplete: LiveData<Boolean> = _saleComplete
     private val _saleActive = MutableLiveData(false)
     val saleActive: LiveData<Boolean> = _saleActive
+    private val _blockingAlert = MutableLiveData<SaleBlockingAlert?>()
+    val blockingAlert: LiveData<SaleBlockingAlert?> = _blockingAlert
     private val _operatorSteps = MutableLiveData(buildOperatorSteps(SaleWorkflowStep.READINESS))
     val operatorSteps: LiveData<String> = _operatorSteps
     private val _voucherSummary = MutableLiveData("No sale result yet.")
@@ -74,52 +76,69 @@ class SaleViewModel(
             val isReady = readinessMessage == null
             _saleReady.value = isReady
             _screenStatus.value = readinessMessage ?: "Ready for amount entry."
+            if (!isReady && readinessMessage?.contains("Payment keys are not ready", ignoreCase = true) == true) {
+                _blockingAlert.value = SaleBlockingAlert(
+                    title = "Keys Not Ready",
+                    message = readinessMessage
+                )
+            }
         }
     }
 
     fun startSale() {
         viewModelScope.launch {
             _saleComplete.value = false
-            _saleActive.value = true
+            _saleActive.value = false
             saleStateMachine.reset()
             publishState(SaleState.CHECKING_READINESS, "Checking sale readiness")
 
             val currentBreakdown = saleAmountBreakdown
             if (currentBreakdown == null) {
-                publishState(SaleState.ERROR, "Enter an amount before starting sale")
-                finishSale("Sale could not start.\nAmount missing.")
+                blockSaleStart(
+                    title = "Amount Required",
+                    message = "Enter an amount before starting the sale."
+                )
                 return@launch
             }
 
             val connectionStatus = deviceRepository.getConnectionStatus()
             if (!connectionStatus.isConnected) {
-                publishState(SaleState.ERROR, "Device service must be connected before sale")
-                finishSale("Sale could not start.\nDevice service is disconnected.")
+                blockSaleStart(
+                    title = "Device Not Connected",
+                    message = "Connect the device service before starting the sale."
+                )
                 return@launch
             }
 
             val networkStatus = networkRepository.getNetworkStatus()
             if (!networkStatus.isConnected) {
-                publishState(SaleState.ERROR, networkStatus.message)
-                finishSale("Sale could not start.\n${networkStatus.message}")
+                blockSaleStart(
+                    title = "Network Unavailable",
+                    message = networkStatus.message
+                )
                 return@launch
             }
 
             val keyStatus = keyRepository.getKeyStatus()
             val keyReadiness = TrackAKeyReadinessValidator.validate(keyStatus)
             if (!keyReadiness.isReady) {
-                publishState(SaleState.ERROR, keyReadiness.message)
-                finishSale("Sale could not start.\n${keyReadiness.message}")
+                blockSaleStart(
+                    title = "Keys Not Ready",
+                    message = "The transaction cannot continue because payment keys are missing or not ready.\n\n" +
+                        keyReadiness.message +
+                        "\n\nReconnect the terminal to inject and verify keys before starting another sale."
+                )
                 return@launch
             }
 
+            _saleActive.value = true
             val request = SaleRequest(
                 amount = currentBreakdown.totalAmount,
                 amountBreakdown = currentBreakdown
             )
             appLogRepository.add(
                 AppLogCategory.SALE,
-                "Starting mock sale for ${request.amount.formatted()} | " +
+                "Starting sale for ${request.amount.formatted()} | " +
                     request.amountBreakdown.formattedSummary().replace("\n", " | ")
             )
             val result = saleRepository.startSale(request) { event ->
@@ -260,6 +279,11 @@ class SaleViewModel(
         _voucherSummary.value = "No sale result yet."
         _voucherDetails.value = VoucherUiModel.empty()
         _printStatus.value = ""
+        _blockingAlert.value = null
+    }
+
+    fun clearBlockingAlert() {
+        _blockingAlert.value = null
     }
 
     fun printVoucher(voucherBitmap: Bitmap) {
@@ -302,7 +326,10 @@ class SaleViewModel(
             keyRepository.getKeyStatus()
         )
         if (!keyReadiness.isReady) {
-            return "Inject Track A keys before starting a sale.\n${keyReadiness.message}"
+            return "Payment keys are not ready.\n\n" +
+                "The transaction is blocked and cannot continue until the terminal keys are injected and verified.\n\n" +
+                keyReadiness.message +
+                "\n\nReconnect the terminal to prepare the keys, then try the sale again."
         }
 
         return null
@@ -321,6 +348,23 @@ class SaleViewModel(
         val displayText = "${transition.state.displayName}\n${transition.message}"
         _screenStatus.postValue(displayText)
         _operatorSteps.postValue(buildOperatorSteps(state.toWorkflowStep()))
+        appLogRepository.add(AppLogCategory.SALE, displayText)
+    }
+
+    private fun blockSaleStart(
+        title: String,
+        message: String
+    ) {
+        saleStateMachine.reset()
+        val displayText = "Sale blocked\n$message"
+        _screenStatus.value = displayText
+        _operatorSteps.value = buildOperatorSteps(SaleWorkflowStep.READINESS)
+        _saleActive.value = false
+        _saleComplete.value = false
+        _blockingAlert.value = SaleBlockingAlert(
+            title = title,
+            message = message
+        )
         appLogRepository.add(AppLogCategory.SALE, displayText)
     }
 
@@ -510,7 +554,7 @@ class SaleViewModel(
         val tagLines = tags.joinToString(separator = "; ") { tag ->
             "${tag.tag} ${tag.label}=${tag.value}"
         }
-        return "Mock EMV data ready | AID=${aid ?: "unknown"} | PAN=${maskedPan?.value ?: "unavailable"} | $tagLines"
+        return "EMV data ready | AID=${aid ?: "unknown"} | PAN=${maskedPan?.value ?: "unavailable"} | $tagLines"
     }
 
     private fun Field55Data.toLogText(): String {
@@ -600,3 +644,8 @@ class SaleViewModel(
     }
 
 }
+
+data class SaleBlockingAlert(
+    val title: String,
+    val message: String
+)

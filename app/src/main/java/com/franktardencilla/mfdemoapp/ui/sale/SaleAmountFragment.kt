@@ -1,8 +1,10 @@
 package com.franktardencilla.mfdemoapp.ui.sale
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.inputmethod.EditorInfo
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -51,6 +53,21 @@ class SaleAmountFragment : Fragment() {
             taxAmountInput.isEnabled = isReady
             continueButton.isEnabled = isReady
         }
+        viewModel.blockingAlert.observe(viewLifecycleOwner) { alert ->
+            if (alert == null) {
+                return@observe
+            }
+            AlertDialog.Builder(requireContext())
+                .setTitle(alert.title)
+                .setMessage(alert.message)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                    viewModel.clearBlockingAlert()
+                    findNavController().navigate(R.id.homeFragment)
+                }
+                .show()
+        }
         parentFragmentManager.setFragmentResultListener(
             MainActivity.DEVICE_CONNECTION_CHANGED_REQUEST_KEY,
             viewLifecycleOwner
@@ -58,7 +75,7 @@ class SaleAmountFragment : Fragment() {
             viewModel.checkSaleReadiness()
         }
 
-        continueButton.setOnClickListener {
+        fun continueToCard() {
             if (
                 viewModel.setAmountBreakdown(
                     baseInput = baseAmountInput.text.toString(),
@@ -68,6 +85,35 @@ class SaleAmountFragment : Fragment() {
             ) {
                 findNavController().navigate(R.id.action_saleAmountFragment_to_saleCardFragment)
             }
+        }
+
+        baseAmountInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                tipAmountInput.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+        tipAmountInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_NEXT) {
+                taxAmountInput.requestFocus()
+                true
+            } else {
+                false
+            }
+        }
+        taxAmountInput.setOnEditorActionListener { _, actionId, _ ->
+            if (actionId == EditorInfo.IME_ACTION_DONE || actionId == EditorInfo.IME_ACTION_NEXT) {
+                continueToCard()
+                true
+            } else {
+                false
+            }
+        }
+
+        continueButton.setOnClickListener {
+            continueToCard()
         }
     }
 

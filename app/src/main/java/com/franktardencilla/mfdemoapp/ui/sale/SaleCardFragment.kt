@@ -1,5 +1,6 @@
 package com.franktardencilla.mfdemoapp.ui.sale
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,6 +17,7 @@ class SaleCardFragment : Fragment() {
     private val viewModel: SaleViewModel by activityViewModels {
         appViewModelFactory()
     }
+    private var navigatedToProcessing = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -36,10 +38,31 @@ class SaleCardFragment : Fragment() {
         viewModel.amountSummary.observe(viewLifecycleOwner) { amount ->
             cardAmountText.text = amount
         }
+        viewModel.saleActive.observe(viewLifecycleOwner) { isActive ->
+            if (isActive && !navigatedToProcessing) {
+                navigatedToProcessing = true
+                findNavController().navigate(R.id.action_saleCardFragment_to_saleProcessingFragment)
+            }
+        }
+        viewModel.blockingAlert.observe(viewLifecycleOwner) { alert ->
+            if (alert == null) {
+                return@observe
+            }
+            AlertDialog.Builder(requireContext())
+                .setTitle(alert.title)
+                .setMessage(alert.message)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setPositiveButton("OK") { dialog, _ ->
+                    dialog.dismiss()
+                    viewModel.clearBlockingAlert()
+                    findNavController().navigate(R.id.homeFragment)
+                }
+                .show()
+        }
 
         view.findViewById<Button>(R.id.presentCardButton).setOnClickListener {
+            navigatedToProcessing = false
             viewModel.startSale()
-            findNavController().navigate(R.id.action_saleCardFragment_to_saleProcessingFragment)
         }
         view.findViewById<Button>(R.id.cancelCardSaleButton).setOnClickListener {
             viewModel.cancelSale()

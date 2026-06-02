@@ -34,6 +34,7 @@
             android:layout_marginTop="8dp"
             android:gravity="end|center_vertical"
             android:hint="@string/base_amount_hint"
+            android:imeOptions="actionNext"
             android:inputType="number"
             android:textSize="28sp" />
 
@@ -52,6 +53,7 @@
             android:layout_marginTop="8dp"
             android:gravity="end|center_vertical"
             android:hint="@string/optional_amount_hint"
+            android:imeOptions="actionNext"
             android:inputType="number"
             android:textSize="24sp" />
 
@@ -70,6 +72,7 @@
             android:layout_marginTop="8dp"
             android:gravity="end|center_vertical"
             android:hint="@string/optional_amount_hint"
+            android:imeOptions="actionDone"
             android:inputType="number"
             android:textSize="24sp" />
 
