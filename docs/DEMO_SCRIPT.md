@@ -19,7 +19,7 @@ The app is single-activity MVVM.
 - Fragments handle screens.
 - ViewModels hold screen state.
 - Repositories isolate storage, network, logs, keys, and device calls.
-- The device adapter can be mock or real.
+- The device adapter uses the real MoreFun/YSDK integration.
 - The simulator is external, not embedded in the app.
 
 Expected explanation:
@@ -115,13 +115,13 @@ Screenshots are acceptable but not required. If screenshots are included, captur
 App tests:
 
 ```bash
-./gradlew testMockDebugUnitTest testRealDebugUnitTest
+./gradlew testDebugUnitTest
 ```
 
 Build app:
 
 ```bash
-./gradlew assembleRealDebug assembleMockDebug
+./gradlew assembleDebug
 ```
 
 Simulator build:

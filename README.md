@@ -9,7 +9,7 @@ The project demonstrates a real-shaped payment flow using MVVM, one Activity, Na
 - `app/src/main/java/com/franktardencilla/mfdemoapp/ui`: Fragments, ViewModels, adapters, and UI models.
 - `app/src/main/java/com/franktardencilla/mfdemoapp/domain`: payment models, ISO8583 models, state machine, key readiness validation.
 - `app/src/main/java/com/franktardencilla/mfdemoapp/repository`: persistence, host config, network, transactions, keys, and logs.
-- `app/src/main/java/com/franktardencilla/mfdemoapp/device`: mock POS device, socket host client, and real MoreFun/YSDK adapter.
+- `app/src/main/java/com/franktardencilla/mfdemoapp/device`: socket host client and real MoreFun/YSDK adapter.
 - `app/src/main/java/com/franktardencilla/mfdemoapp/data`: Room database entities and DAO interfaces.
 - `docs`: architecture note, requirement traceability, and demo script.
 
@@ -25,34 +25,21 @@ The project demonstrates a real-shaped payment flow using MVVM, one Activity, Na
 From the project root:
 
 ```bash
-./gradlew assembleMockDebug assembleRealDebug
+./gradlew assembleDebug
 ```
 
 Generated APKs:
 
 ```text
-app/build/outputs/apk/mock/debug/app-mock-debug.apk
-app/build/outputs/apk/real/debug/app-real-debug.apk
+app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## Run
 
-### Mock Variant
-
-Use this when testing without the real YSDK hardware layer.
-
-```bash
-./gradlew installMockDebug
-```
-
-The mock variant still uses the external ISO8583 simulator for host authorization.
-
-### Real Variant
-
 Use this on the MoreFun/YSDK terminal.
 
 ```bash
-./gradlew installRealDebug
+./gradlew installDebug
 ```
 
 Before a sale:
@@ -93,7 +80,7 @@ Simulator behavior:
 Run unit tests for both variants:
 
 ```bash
-./gradlew testMockDebugUnitTest testRealDebugUnitTest
+./gradlew testDebugUnitTest
 ```
 
 Current coverage includes:

@@ -20,8 +20,7 @@ import com.franktardencilla.mfdemoapp.domain.terminal.TerminalSessionUseCase
 import com.franktardencilla.mfdemoapp.ui.sale.VoucherMapper
 
 class AppContainer(
-    context: Context,
-    runtimeMode: AppRuntimeMode = AppRuntimeMode.MOCK
+    context: Context
 ) {
     val hostConfigRepository = HostConfigRepository(context)
     private val transactionDatabase = Room.databaseBuilder(
@@ -44,7 +43,7 @@ class AppContainer(
         hostConfigRepository,
         stanRepository
     )
-        .create(runtimeMode)
+        .create()
 
     val deviceRepository = DeviceRepository(posDependencies.deviceServiceManager)
     val keyRepository = KeyRepository(posDependencies.posDeviceAdapter)

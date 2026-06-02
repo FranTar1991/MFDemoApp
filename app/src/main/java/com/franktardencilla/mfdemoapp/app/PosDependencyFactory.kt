@@ -1,13 +1,6 @@
 package com.franktardencilla.mfdemoapp.app
 
 import android.content.Context
-import androidx.room.Room
-import com.franktardencilla.mfdemoapp.data.mockped.MockPedDatabase
-import com.franktardencilla.mfdemoapp.data.mockped.RoomMockPedKeyStore
-import com.franktardencilla.mfdemoapp.device.MockDeviceServiceManager
-import com.franktardencilla.mfdemoapp.device.MockEmvProcessor
-import com.franktardencilla.mfdemoapp.device.MockPed
-import com.franktardencilla.mfdemoapp.device.MockPosDeviceAdapter
 import com.franktardencilla.mfdemoapp.device.SocketIso8583HostClient
 import com.franktardencilla.mfdemoapp.device.morefun.MorefunDeviceServiceManager
 import com.franktardencilla.mfdemoapp.device.morefun.RealYsdkPosDeviceAdapter
@@ -20,45 +13,7 @@ class PosDependencyFactory(
     private val hostConfigRepository: HostConfigRepository,
     private val stanRepository: StanRepository
 ) {
-    fun create(runtimeMode: AppRuntimeMode): PosDependencies {
-        return when (runtimeMode) {
-            AppRuntimeMode.MOCK -> createMockDependencies()
-            AppRuntimeMode.REAL_YSDK -> createRealYsdkDependencies()
-        }
-    }
-
-    private fun createMockDependencies(): PosDependencies {
-        val mockPedDatabase = Room.databaseBuilder(
-            context.applicationContext,
-            MockPedDatabase::class.java,
-            "mock_ped.db"
-        ).build()
-        val mockPedKeyStore = RoomMockPedKeyStore(
-            mockPedDatabase.mockPedKeySlotDao()
-        )
-        val mockPed = MockPed(mockPedKeyStore)
-        val emvProcessor = MockEmvProcessor()
-        val hostClient = SocketIso8583HostClient(hostConfigRepository)
-        val saleIsoRequestBuilder = SaleIsoRequestBuilder(
-            stanProvider = stanRepository::nextStan
-        )
-        val deviceServiceManager = MockDeviceServiceManager(context)
-        val posDeviceAdapter = MockPosDeviceAdapter(
-            deviceServiceManager,
-            mockPed,
-            emvProcessor,
-            emvProcessor,
-            hostClient,
-            saleIsoRequestBuilder
-        )
-
-        return PosDependencies(
-            deviceServiceManager = deviceServiceManager,
-            posDeviceAdapter = posDeviceAdapter
-        )
-    }
-
-    private fun createRealYsdkDependencies(): PosDependencies {
+    fun create(): PosDependencies {
         val deviceServiceManager = MorefunDeviceServiceManager(context)
         val hostClient = SocketIso8583HostClient(hostConfigRepository)
         val saleIsoRequestBuilder = SaleIsoRequestBuilder(

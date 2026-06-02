@@ -19,7 +19,7 @@ Key files:
 
 ## 2. Key Injection And Key Readiness
 
-Status: Implemented for demo mode and real MoreFun/YSDK mode.
+Status: Implemented for real MoreFun/YSDK mode.
 
 - The real device path uses the MoreFun PinPad KEK/MK/SK style flow aligned with the SDK demo.
 - The demo injects a KEK, an encrypted master key, a PIN working key, and a MAC working key.
@@ -108,7 +108,7 @@ Status: Implemented and expanding.
 Run:
 
 ```bash
-./gradlew testMockDebugUnitTest testRealDebugUnitTest
+./gradlew testDebugUnitTest
 ```
 
 ## Known Demo Boundaries

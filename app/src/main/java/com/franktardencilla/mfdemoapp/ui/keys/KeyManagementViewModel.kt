@@ -54,7 +54,7 @@ class KeyManagementViewModel(
         viewModelScope.launch {
             _keyStatus.value = "Clearing keys..."
             val status = keyRepository.clearKeys()
-            appLogRepository.add(AppLogCategory.SECURITY, "Cleared mock PED key slots")
+            appLogRepository.add(AppLogCategory.SECURITY, "Cleared terminal key slots")
             updateKeyStatus(status)
         }
     }

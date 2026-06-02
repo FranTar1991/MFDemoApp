@@ -1,6 +1,6 @@
 # Architecture Note
 
-The app uses MVVM with a single Activity, Android Navigation, multiple Fragments, ViewModels, repositories, Room persistence, and an external ISO8583 simulator. The goal is to keep the operator workflow simple while keeping payment, device, storage, and host concerns separated enough to switch between mock and real device modes.
+The app uses MVVM with a single Activity, Android Navigation, multiple Fragments, ViewModels, repositories, Room persistence, and an external ISO8583 simulator. The goal is to keep the operator workflow simple while keeping payment, device, storage, and host concerns separated.
 
 ## Modules And Responsibilities
 
@@ -30,12 +30,9 @@ Repositories isolate persistence, device state, logs, network checks, and host c
 - `NetworkRepository` validates Android network availability.
 - `AppLogRepository` stores redacted logs and mirrors them to Logcat.
 
-### Device Adapters
+### Device Adapter
 
-The app can run through mock or real device adapters. Both return the same domain result types, so the UI flow remains the same.
-
-- Mock mode simulates card/EMV/PED behavior while still using the external ISO8583 simulator.
-- Real mode uses the MoreFun/YSDK jar for PinPad/PED, EMV card reading, beeper, printer, and MAC calculation.
+The app uses the real MoreFun/YSDK adapter for PinPad/PED, EMV card reading, beeper, printer, and MAC calculation. The external ISO8583 simulator remains separate from the app and acts only as the host endpoint.
 
 ## Transaction State Machine
 

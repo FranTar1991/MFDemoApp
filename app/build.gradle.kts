@@ -19,18 +19,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
-    flavorDimensions += "runtime"
-    productFlavors {
-        create("mock") {
-            dimension = "runtime"
-            buildConfigField("boolean", "USE_REAL_YSDK", "false")
-        }
-        create("real") {
-            dimension = "runtime"
-            buildConfigField("boolean", "USE_REAL_YSDK", "true")
-        }
-    }
-
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -43,9 +31,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-    buildFeatures {
-        buildConfig = true
     }
 }
 
